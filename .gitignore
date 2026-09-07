@@ -1,0 +1,20 @@
+# Secrets and Environment Variables
+.env
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Rust artifacts
+cargo_parser/target/
+Cargo.lock
+
+#self files
+RustAuditAI.pdf
+srs_content.txt

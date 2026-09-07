@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RustAuditAI | Semantic Graph Quality Intelligence Dashboard</title>
+    
+    <!-- Google Fonts & FontAwesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Vis-Network for Interactive Graph Canvas -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+    <!-- Custom Design System Styles -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Navigation Header -->
+        <header class="app-header">
+            <div class="brand-badge">
+                <div class="logo-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <div class="brand-text">
+                    <h1>RustAudit<span>AI</span></h1>
+                    <p>Intra-Procedural Quality Intelligence & Graph Analysis</p>
+                </div>
+            </div>
+            
+            <div class="header-actions">
+                <!-- Developer Mode Interactive Toggle -->
+                <div class="dev-mode-box">
+                    <label class="dev-switch">
+                        <input type="checkbox" id="developer-mode-toggle">
+                        <span class="dev-slider"></span>
+                    </label>
+                    <span class="dev-mode-label"><i class="fa-solid fa-diagram-project"></i> Developer Mode</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Workspace Split Panel -->
+        <main class="workspace-grid">
+            <!-- Left Column: Source Code Input & Configuration (UNCHANGED) -->
+            <section class="panel code-input-panel">
+                <div class="panel-header">
+                    <h2><i class="fa-solid fa-code"></i> Subroutine Code Editor</h2>
+                    <div class="preset-dropdown">
+                        <button id="load-sample-btn" type="button" class="btn btn-secondary btn-sm">
+                            <i class="fa-solid fa-vial"></i> Load Sample
+                        </button>
+                    </div>
+                </div>
+
+                <div class="editor-wrapper">
+                    <textarea id="code-editor" placeholder="// Paste your Rust function scope here...
+pub fn process_data(data: &str) -> String {
+    let duplicate = data.to_string().clone();
+    unsafe {
+        let ptr = data.as_ptr();
+    }
+    duplicate
+}"></textarea>
+                </div>
+
+                <div class="panel-footer">
+                    <div class="ai-toggle-box">
+                        <label class="switch">
+                            <input type="checkbox" id="enable-xai-toggle" checked>
+                            <span class="slider round"></span>
+                        </label>
+                        <span class="toggle-label"><i class="fa-solid fa-brain"></i> Enable XAI Engine</span>
+                    </div>
+
+                    <button id="analyze-btn" class="btn btn-primary">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Execute Graph Audit
+                    </button>
+                </div>
+            </section>
+
+            <!-- Right Column: Audit Intelligence Output -->
+            <section class="panel audit-output-panel">
+                <div id="welcome-empty-state" class="empty-state">
+                    <div class="empty-icon"><i class="fa-solid fa-diagram-project"></i></div>
+                    <h3>Ready for Intra-Procedural Analysis</h3>
+                    <p>Paste a Rust subroutine on the left and click <strong>Execute Graph Audit</strong> to construct AST, CFG, and FLOG Code Property Graphs.</p>
+                </div>
+
+                <div id="loader-state" class="loader-container hidden">
+                    <div class="spinner"></div>
+                    <p id="loader-text">Extracting AST token streams & building FLOG ownership graph...</p>
+                </div>
+
+                <div id="audit-results-container" class="results-container hidden">
+                    <!-- Function Selector Tabs -->
+                    <div id="function-tabs" class="function-tabs"></div>
+
+                    <!-- NON-DEVELOPER MODE: RQI SHOWCASE CARD (Hero Dial + 2x2 Circular Gauges Grid) -->
+                    <div id="non-dev-rqi-card" class="rqi-showcase-card">
+                        <!-- Left Hero Side: Prominent RQI Score Dial & External Grade Letter -->
+                        <div class="rqi-main-hero">
+                            <div class="score-dial-large">
+                                <svg viewBox="0 0 36 36" class="circular-chart-large">
+                                    <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                    <path id="score-circle-path" class="circle circle-rqi" stroke-dasharray="80.8, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                    <text x="18" y="20.35" class="percentage-large" id="rqi-score-num">80.8</text>
+                                </svg>
+                            </div>
+                            <div class="hero-info">
+                                <h3>Rust Quality Index</h3>
+                                <div class="grade-container">
+                                    <span class="grade-letter" id="rqi-grade-letter">A</span>
+                                    <div class="grade-badge" id="rqi-grade-text">Good Quality</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Side: 2x2 Grid of Circular Vector Gauges (Integer Values) -->
+                        <div class="vectors-grid-2x2">
+                            <!-- Vector 1: Safety -->
+                            <div class="vector-gauge-card">
+                                <div class="mini-dial">
+                                    <svg viewBox="0 0 36 36" class="mini-chart">
+                                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <path id="path-safety" class="circle circle-safety" stroke-dasharray="75, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <text x="18" y="20.35" class="mini-percentage" id="val-safety">75</text>
+                                    </svg>
+                                </div>
+                                <span class="v-title"><i class="fa-solid fa-user-shield"></i> Safety</span>
+                            </div>
+
+                            <!-- Vector 2: Performance -->
+                            <div class="vector-gauge-card">
+                                <div class="mini-dial">
+                                    <svg viewBox="0 0 36 36" class="mini-chart">
+                                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <path id="path-perf" class="circle circle-perf" stroke-dasharray="65, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <text x="18" y="20.35" class="mini-percentage" id="val-perf">65</text>
+                                    </svg>
+                                </div>
+                                <span class="v-title"><i class="fa-solid fa-gauge-high"></i> Performance</span>
+                            </div>
+
+                            <!-- Vector 3: Maintainability -->
+                            <div class="vector-gauge-card">
+                                <div class="mini-dial">
+                                    <svg viewBox="0 0 36 36" class="mini-chart">
+                                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <path id="path-maint" class="circle circle-maint" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <text x="18" y="20.35" class="mini-percentage" id="val-maint">100</text>
+                                    </svg>
+                                </div>
+                                <span class="v-title"><i class="fa-solid fa-cubes-stacked"></i> Maintainability</span>
+                            </div>
+
+                            <!-- Vector 4: Security -->
+                            <div class="vector-gauge-card">
+                                <div class="mini-dial">
+                                    <svg viewBox="0 0 36 36" class="mini-chart">
+                                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <path id="path-sec" class="circle circle-sec" stroke-dasharray="85, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <text x="18" y="20.35" class="mini-percentage" id="val-sec">85</text>
+                                    </svg>
+                                </div>
+                                <span class="v-title"><i class="fa-solid fa-lock"></i> Security</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NON-DEVELOPER MODE: Detailed Deductions Panel -->
+                    <div id="non-dev-deductions-box" class="deductions-box">
+                        <h4><i class="fa-solid fa-triangle-exclamation"></i> Quality Deductions & Indicator Logs</h4>
+                        <ul id="deductions-list" class="deductions-list"></ul>
+                    </div>
+
+                    <!-- DEVELOPER MODE RQI ANALYSIS CARD (RQI METRIC + FORMULA EXPLANATION + VERTICAL VECTORS STACK) -->
+                    <div id="dev-rqi-card" class="dev-rqi-card hidden">
+                        <!-- Top Banner: RQI Score Dial (No Grade/Label) + Matrix Calculation Formula -->
+                        <div class="dev-rqi-top-banner">
+                            <div class="dev-rqi-hero-left">
+                                <div class="score-dial-large">
+                                    <svg viewBox="0 0 36 36" class="circular-chart-large">
+                                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <path id="dev-score-circle-path" class="circle circle-rqi" stroke-dasharray="80.8, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <text x="18" y="20.35" class="percentage-large" id="dev-rqi-score-num">80.8</text>
+                                    </svg>
+                                </div>
+                                <div class="dev-hero-info">
+                                    <h3>Rust Quality Index</h3>
+                                </div>
+                            </div>
+
+                            <div class="dev-rqi-calc-right">
+                                <h4><i class="fa-solid fa-calculator"></i> RQI Matrix Calculation</h4>
+                                <div class="formula-box">
+                                    <code>RQI = (0.30 × S) + (0.25 × P) + (0.25 × M) + (0.20 × SEC) - Penalty</code>
+                                </div>
+                                <div class="calc-metrics-row">
+                                    <div class="calc-chip">
+                                        <span class="lbl">Linear Weighted Sum:</span>
+                                        <span id="dev-calc-weighted-sum" class="val">82.5</span>
+                                    </div>
+                                    <div class="calc-chip">
+                                        <span class="lbl">Penalty Applied:</span>
+                                        <span id="dev-calc-penalty-val" class="val">No Penalty</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bottom Section: 4 Vector Metrics Stacked Vertically Below Each Other -->
+                        <div class="dev-vectors-vertical-container">
+                            <h4><i class="fa-solid fa-list-check"></i> Quality Vectors Breakdown & Score Assignment Rationales</h4>
+                            <div id="dev-vectors-vertical-list" class="dev-vectors-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- DEVELOPER MODE GRAPH VISUALIZER CONTAINER (3 GRAPHS -> ISSUES NOTED) -->
+                    <div id="dev-graph-container" class="dev-graph-panel hidden">
+                        <!-- 1. Developer Graph Visualizer (3 Graphs: FLOG, CFG, AST) -->
+                        <div class="dev-panel-header">
+                            <h3><i class="fa-solid fa-network-wired"></i> Subroutine Graph Visualizer </h3>
+                            <div class="graph-tab-buttons">
+                                <button class="graph-type-btn active" data-graph="flog"><i class="fa-solid fa-arrows-split-up-and-left"></i> FLOG Graph</button>
+                                <button class="graph-type-btn" data-graph="cfg"><i class="fa-solid fa-diagram-next"></i> CFG Graph</button>
+                                <button class="graph-type-btn" data-graph="ast"><i class="fa-solid fa-sitemap"></i> AST Graph</button>
+                            </div>
+                        </div>
+
+                        <!-- Canvas for Interactive Network Graph -->
+                        <div id="interactive-canvas" class="canvas-box"></div>
+
+                        <!-- Graph Topology Metrics Bar -->
+                        <div id="graph-metrics-bar" class="graph-metrics-bar">
+                            <div class="g-stat"><span class="lbl">AST Nodes:</span><span id="ast-nodes-cnt" class="val">11</span></div>
+                            <div class="g-stat"><span class="lbl">CFG Complexity V(G):</span><span id="cfg-cc-cnt" class="val">2</span></div>
+                            <div class="g-stat"><span class="lbl">FLOG Allocations:</span><span id="flog_alloc_cnt" class="val">2</span></div>
+                            <div class="g-stat"><span class="lbl">FLOG Clones:</span><span id="flog_clones_cnt" class="val">1</span></div>
+                        </div>
+
+                        <!-- 2. Issues & Topological Outliers Noted from Those Graphs -->
+                        <div class="outliers-drawer">
+                            <h4><i class="fa-solid fa-magnifying-glass-chart"></i> Graph Topological Outliers & Anomaly Issues</h4>
+                            <div id="outliers-content-list" class="outliers-list-box"></div>
+                        </div>
+                    </div>
+
+                    <!-- NON-DEVELOPER MODE ONLY: XAI Explainable Refactoring Insights -->
+                    <div id="xai-section" class="xai-section">
+                        <div class="xai-card">
+                            <div class="xai-card-header">
+                                <h3><i class="fa-solid fa-microchip"></i> XAI Explainable Refactoring Insights</h3>
+                            </div>
+                            <div class="xai-body">
+                                <h4>Root Cause Analysis</h4>
+                                <div id="xai-explanation-text" class="xai-explanation-box">Analyzing root cause...</div>
+                                
+                                <div class="patch-candidate-box">
+                                    <div class="patch-box-header">
+                                        <h5><i class="fa-solid fa-file-code"></i> Idiomatic Rust Patch Candidate (~100% RQI)</h5>
+                                        <button id="copy-patch-btn" type="button" class="btn-copy-patch" title="Copy patch code">
+                                            <i class="fa-regular fa-copy"></i> <span>Copy Patch</span>
+                                        </button>
+                                    </div>
+                                    <pre><code id="xai-patch-code">pub fn refactored() {}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- App JavaScript -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
