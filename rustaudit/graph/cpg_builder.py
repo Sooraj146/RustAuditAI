@@ -87,10 +87,42 @@ class CPGBuilder:
         flog_root = f"FLOG::flog_{fn_info.name}_SCOPE"
 
         if unified.has_node(ast_root) and unified.has_node(cfg_entry):
-            unified.add_edge(ast_root, cfg_entry, edge_type="AST_TO_CFG")
+            unified.add_edge(ast_root, cfg_entry, edge_type="AST_TO_CFG", label="ROOT_CONTROL")
 
         if unified.has_node(ast_root) and unified.has_node(flog_root):
-            unified.add_edge(ast_root, flog_root, edge_type="AST_TO_FLOG")
+            unified.add_edge(ast_root, flog_root, edge_type="AST_TO_FLOG", label="ROOT_OWNERSHIP")
+
+        # Statement-level and variable-level cross-layer edge unification
+        body_prefix = f"AST::fn_{fn_info.name}_body_stmt_"
+        cfg_prefix = f"CFG::cfg_{fn_info.name}_block_"
+
+        import re
+        for idx, stmt in enumerate(fn_info.statements):
+            ast_stmt = f"{body_prefix}{idx}"
+            cfg_block = f"{cfg_prefix}{idx}"
+
+            # 1. AST Statement <-> CFG Basic Block
+            if unified.has_node(ast_stmt) and unified.has_node(cfg_block):
+                unified.add_edge(ast_stmt, cfg_block, edge_type="AST_TO_CFG_STMT", label="CONTROLS")
+
+            # 2. CFG Block / AST Statement <-> FLOG Unsafe Operations
+            flog_unsafe = f"FLOG::unsafe_op_{idx}"
+            if unified.has_node(flog_unsafe):
+                if unified.has_node(cfg_block):
+                    unified.add_edge(cfg_block, flog_unsafe, edge_type="CFG_TO_FLOG_UNSAFE", label="EXECUTES_UNSAFE")
+                if unified.has_node(ast_stmt):
+                    unified.add_edge(ast_stmt, flog_unsafe, edge_type="AST_TO_FLOG_UNSAFE", label="CONTAINS_UNSAFE")
+
+            # 3. CFG Block / AST Statement <-> FLOG Variable Bindings
+            let_match = re.search(r'\blet\s+(?:mut\s+)?(\w+)', stmt.code)
+            if let_match:
+                var_name = let_match.group(1)
+                flog_var = f"FLOG::var_{var_name}"
+                if unified.has_node(flog_var):
+                    if unified.has_node(cfg_block):
+                        unified.add_edge(cfg_block, flog_var, edge_type="CFG_TO_FLOG_BIND", label="BINDS")
+                    if unified.has_node(ast_stmt):
+                        unified.add_edge(ast_stmt, flog_var, edge_type="AST_TO_FLOG_DECL", label="DECLARES")
 
         return CodePropertyGraph(
             function_name=fn_info.name,

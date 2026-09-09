@@ -5,7 +5,7 @@ Aggregates quality vector scores into a composite RQI score (0-100) using a dyna
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Any
-from .vector_calculators import VectorScores, QualityVectorCalculator
+from .vector_calculators import VectorScores, QualityVectorCalculator, VectorDeduction
 from rustaudit.parser.rust_parser import FunctionAstInfo
 from rustaudit.graph.cpg_builder import CodePropertyGraph
 
@@ -19,6 +19,36 @@ class RQISummary:
     penalty_applied: bool
     penalty_reasons: List[str] = field(default_factory=list)
 
+    @property
+    def structured_deductions(self) -> Dict[str, List[VectorDeduction]]:
+        return {
+            "safety": [d for d in self.vectors.structured_deductions if d.vector == "safety"],
+            "performance": [d for d in self.vectors.structured_deductions if d.vector == "performance"],
+            "maintainability": [d for d in self.vectors.structured_deductions if d.vector == "maintainability"],
+            "security": [d for d in self.vectors.structured_deductions if d.vector == "security"],
+        }
+
+    def get_cwe_tags(self) -> List[Dict[str, Any]]:
+        tags = []
+        seen = set()
+        for d in self.vectors.structured_deductions:
+            if d.cwe_id:
+                key = (d.cwe_id, d.line_number)
+                if key not in seen:
+                    seen.add(key)
+                    tags.append(d.to_dict())
+        return tags
+
+    def get_cwe_summary(self) -> Dict[str, Any]:
+        counts = {"total": len(self.vectors.structured_deductions), "critical": 0, "high": 0, "medium": 0, "low": 0}
+        for d in self.vectors.structured_deductions:
+            sev = d.severity.lower()
+            if sev in counts:
+                counts[sev] += 1
+            else:
+                counts["medium"] += 1
+        return counts
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "function_name": self.function_name,
@@ -31,6 +61,13 @@ class RQISummary:
             "penalty_applied": self.penalty_applied,
             "penalty_reasons": self.penalty_reasons,
             "deductions": self.vectors.deductions,
+            "structured_deductions": {
+                k: [d.to_dict() for d in v]
+                for k, v in self.structured_deductions.items()
+            },
+            "structured_deductions_list": [d.to_dict() for d in self.vectors.structured_deductions],
+            "cwe_tags": self.get_cwe_tags(),
+            "cwe_summary": self.get_cwe_summary(),
         }
 
 

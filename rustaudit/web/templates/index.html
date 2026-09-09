@@ -15,7 +15,7 @@
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 
     <!-- Custom Design System Styles -->
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=cwe_final">
 </head>
 <body>
     <div class="app-container">
@@ -47,15 +47,29 @@
             <section class="panel code-input-panel">
                 <div class="panel-header">
                     <h2><i class="fa-solid fa-code"></i> Subroutine Code Editor</h2>
-                    <div class="preset-dropdown">
+                    <div class="editor-header-actions">
+                        <span id="file-badge" class="file-badge hidden">
+                            <i class="fa-brands fa-rust"></i> <span id="file-name-text">sample.rs</span>
+                            <button id="clear-file-btn" type="button" title="Clear loaded file">&times;</button>
+                        </span>
+                        <input type="file" id="file-upload-input" accept=".rs,text/plain" class="hidden-file-input">
+                        <button id="upload-file-btn" type="button" class="btn btn-secondary btn-sm" title="Upload a Rust (.rs) file to load into editor">
+                            <i class="fa-solid fa-file-arrow-up"></i> Upload .rs
+                        </button>
                         <button id="load-sample-btn" type="button" class="btn btn-secondary btn-sm">
                             <i class="fa-solid fa-vial"></i> Load Sample
                         </button>
                     </div>
                 </div>
 
-                <div class="editor-wrapper">
-                    <textarea id="code-editor" placeholder="// Paste your Rust function scope here...
+                <div class="editor-wrapper" id="editor-wrapper">
+                    <div id="drop-overlay" class="drop-overlay hidden">
+                        <div class="drop-overlay-content">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <p>Drop Rust (.rs) file here to load into editor</p>
+                        </div>
+                    </div>
+                    <textarea id="code-editor" placeholder="// Paste or upload your Rust function scope here...
 pub fn process_data(data: &str) -> String {
     let duplicate = data.to_string().clone();
     unsafe {
@@ -94,8 +108,16 @@ pub fn process_data(data: &str) -> String {
                 </div>
 
                 <div id="audit-results-container" class="results-container hidden">
-                    <!-- Function Selector Tabs -->
-                    <div id="function-tabs" class="function-tabs"></div>
+                    <!-- Results Top Bar: Function Selector Tabs & Report Export Actions -->
+                    <div class="results-top-bar">
+                        <div id="function-tabs" class="function-tabs"></div>
+                        <div class="export-actions-group">
+                            <button id="export-pdf-btn" class="btn-export btn-export-pdf" title="Export Publication-Grade PDF Quality Report (SRS §4.6.5)">
+                                <i class="fa-solid fa-file-pdf"></i>
+                                <span>Export PDF</span>
+                            </button>
+                        </div>
+                    </div>
 
                     <!-- NON-DEVELOPER MODE: RQI SHOWCASE CARD (Hero Dial + 2x2 Circular Gauges Grid) -->
                     <div id="non-dev-rqi-card" class="rqi-showcase-card">
@@ -171,7 +193,17 @@ pub fn process_data(data: &str) -> String {
 
                     <!-- NON-DEVELOPER MODE: Detailed Deductions Panel -->
                     <div id="non-dev-deductions-box" class="deductions-box">
-                        <h4><i class="fa-solid fa-triangle-exclamation"></i> Quality Deductions & Indicator Logs</h4>
+                        <div class="deductions-header-row">
+                            <h4><i class="fa-solid fa-triangle-exclamation"></i> Quality Deductions & Indicator Logs</h4>
+                            <div id="cwe-summary-bar" class="cwe-summary-bar">
+                                <span class="cwe-summary-title"><i class="fa-solid fa-shield-halved"></i> CWE Tracking:</span>
+                                <span class="cwe-counter-badge total" id="cwe-count-total" title="Total CWE Weaknesses">0 Total</span>
+                                <span class="cwe-counter-badge critical" id="cwe-count-critical" title="Critical Severity Weaknesses">0 Critical</span>
+                                <span class="cwe-counter-badge high" id="cwe-count-high" title="High Severity Weaknesses">0 High</span>
+                                <span class="cwe-counter-badge medium" id="cwe-count-medium" title="Medium Severity Weaknesses">0 Medium</span>
+                                <span class="cwe-counter-badge low" id="cwe-count-low" title="Low Severity Weaknesses">0 Low</span>
+                            </div>
+                        </div>
                         <ul id="deductions-list" class="deductions-list"></ul>
                     </div>
 
@@ -226,6 +258,7 @@ pub fn process_data(data: &str) -> String {
                                 <button class="graph-type-btn active" data-graph="flog"><i class="fa-solid fa-arrows-split-up-and-left"></i> FLOG Graph</button>
                                 <button class="graph-type-btn" data-graph="cfg"><i class="fa-solid fa-diagram-next"></i> CFG Graph</button>
                                 <button class="graph-type-btn" data-graph="ast"><i class="fa-solid fa-sitemap"></i> AST Graph</button>
+                                <button class="graph-type-btn" data-graph="cpg"><i class="fa-solid fa-project-diagram"></i> Unified CPG</button>
                             </div>
                         </div>
 
@@ -238,6 +271,7 @@ pub fn process_data(data: &str) -> String {
                             <div class="g-stat"><span class="lbl">CFG Complexity V(G):</span><span id="cfg-cc-cnt" class="val">2</span></div>
                             <div class="g-stat"><span class="lbl">FLOG Allocations:</span><span id="flog_alloc_cnt" class="val">2</span></div>
                             <div class="g-stat"><span class="lbl">FLOG Clones:</span><span id="flog_clones_cnt" class="val">1</span></div>
+                            <div class="g-stat"><span class="lbl">CPG Edges:</span><span id="cpg-edges-cnt" class="val">0</span></div>
                         </div>
 
                         <!-- 2. Issues & Topological Outliers Noted from Those Graphs -->
@@ -254,7 +288,7 @@ pub fn process_data(data: &str) -> String {
                                 <h3><i class="fa-solid fa-microchip"></i> XAI Explainable Refactoring Insights</h3>
                             </div>
                             <div class="xai-body">
-                                <h4>Root Cause Analysis</h4>
+                                <h4><i class="fa-solid fa-brain"></i> Architectural Root Cause & Remediation Insights</h4>
                                 <div id="xai-explanation-text" class="xai-explanation-box">Analyzing root cause...</div>
                                 
                                 <div class="patch-candidate-box">
@@ -275,6 +309,6 @@ pub fn process_data(data: &str) -> String {
     </div>
 
     <!-- App JavaScript -->
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/app.js?v=readability_v3"></script>
 </body>
 </html>

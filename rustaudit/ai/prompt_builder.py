@@ -64,6 +64,18 @@ class XAIPromptBuilder:
                 prompt_lines.append(f"- {d}")
             prompt_lines.append("")
 
+        # Identified MITRE CWE Weakness Tags
+        cwe_tags = rqi_summary.get_cwe_tags()
+        if cwe_tags:
+            prompt_lines.append("=== IDENTIFIED MITRE CWE WEAKNESS TAGS ===")
+            for t in cwe_tags:
+                loc = f" [Line {t['line_number']}]" if t.get('line_number') else ""
+                stmt = f" -> `{t['statement_code']}`" if t.get('statement_code') else ""
+                prompt_lines.append(f"- [{t['cwe_id']}{loc}] {t['name']} ({t['severity']}){stmt}")
+                if t.get('remediation'):
+                    prompt_lines.append(f"  Remediation: {t['remediation']}")
+            prompt_lines.append("")
+
         if rqi_summary.penalty_applied:
             prompt_lines.append("=== NON-LINEAR PENALTIES ACTIVE ===")
             for p in rqi_summary.penalty_reasons:
@@ -72,13 +84,16 @@ class XAIPromptBuilder:
 
         prompt_lines.append(
             "=== REFACTORING GOAL ==="
-            "\nProduce an idiomatic, clean refactoring that resolves ALL quality deductions above and scores near 100% RQI (A+ grade)."
+            "\nProduce an idiomatic, clean refactoring that resolves ALL quality deductions and CWE weaknesses above and scores near 100% RQI (A+ grade)."
             "\nDecompose the function into smaller helper functions where appropriate (e.g. separate formatting, logging, or complex checks) while preserving 100% of the original behavior."
             "\nEnsure the main refactored function keeps its original signature so callers are unaffected.\n\n"
             "=== REQUESTED ANALYSIS OUTPUT FORMAT ===\n"
             "Please structure your response into the following 3 markdown sections:\n\n"
             "### 1. Root Cause Explanation\n"
-            "(Explain clearly why the original code received deductions, referencing graph ownership, unnecessary allocations/clones, unsafe scopes, or complexity)\n\n"
+            "Provide a short overview sentence, followed by numbered items for each deduction in this format:\n"
+            "1. **Defect Title ([CWE-ID if applicable])**:\n"
+            "   - **Root Cause**: Specific explanation of the flaw, AST/FLOG graph invariant, or unsafe hazard.\n"
+            "   - **Remediation**: Exact steps to fix it idiomatic to Rust.\n\n"
             "### 2. Proposed Idiomatic Refactored Patch\n"
             "```rust\n"
             "// Full standalone refactored code (main function + decomposed helper functions)\n"

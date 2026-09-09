@@ -81,14 +81,16 @@ class FLOGGraphBuilder:
                 # Check for source variable move or borrow relationships
                 for src_var in list(declared_vars):
                     if src_var != var_name and re.search(r'\b' + re.escape(src_var) + r'\b', expr_code):
-                        if is_clone:
-                            flog.add_edge(src_var, var_node_id, edge_type="CLONED_FROM")
-                        elif is_mut_borrow:
-                            flog.add_edge(src_var, var_node_id, edge_type="MUTABLE_BORROW")
-                        elif is_immut_borrow:
-                            flog.add_edge(src_var, var_node_id, edge_type="IMMUTABLE_BORROW")
-                        else:
-                            flog.add_edge(src_var, var_node_id, edge_type="MOVED_TO")
+                        src_node_id = f"var_{src_var}"
+                        if flog.has_node(src_node_id):
+                            if is_clone:
+                                flog.add_edge(src_node_id, var_node_id, edge_type="CLONED_FROM")
+                            elif is_mut_borrow:
+                                flog.add_edge(src_node_id, var_node_id, edge_type="MUTABLE_BORROW")
+                            elif is_immut_borrow:
+                                flog.add_edge(src_node_id, var_node_id, edge_type="IMMUTABLE_BORROW")
+                            else:
+                                flog.add_edge(src_node_id, var_node_id, edge_type="MOVED_TO")
 
             # Check for unsafe operations inside statement
             if stmt.has_unsafe or "unsafe" in stmt.code:
@@ -100,6 +102,13 @@ class FLOGGraphBuilder:
                     index=idx,
                 )
                 flog.add_edge(root_id, unsafe_node_id, edge_type="CONTAINS_UNSAFE")
+
+                # Link unsafe block to any variables referenced within it
+                for src_var in list(declared_vars):
+                    if re.search(r'\b' + re.escape(src_var) + r'\b', stmt.code):
+                        src_node_id = f"var_{src_var}"
+                        if flog.has_node(src_node_id):
+                            flog.add_edge(src_node_id, unsafe_node_id, edge_type="ACCESSED_IN_UNSAFE")
 
         # Summary graph metadata
         flog.graph["total_variables"] = len(declared_vars)

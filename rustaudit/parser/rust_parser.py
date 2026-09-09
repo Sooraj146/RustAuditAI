@@ -14,6 +14,7 @@ class StatementSummary:
     has_clone: bool = False
     has_unsafe: bool = False
     has_allocation: bool = False
+    line_number: int = 0
 
 
 @dataclass
@@ -81,17 +82,33 @@ class RustParser:
                 )
                 if res.returncode == 0 and res.stdout.strip():
                     data = json.loads(res.stdout)
+                    if not data.get("success", True):
+                        return AnalysisResult(
+                            success=False,
+                            error=data.get("error") or "Rust syntax error",
+                            file_path=data.get("file_path", file_path),
+                            functions=[],
+                        )
                     fns = []
                     for f in data.get("functions", []):
                         stmts = [StatementSummary(**s) for s in f.get("statements", [])]
                         f["statements"] = stmts
-                        fns.append(FunctionAstInfo(**f))
-                    return AnalysisResult(
-                        success=data.get("success", True),
-                        error=data.get("error"),
-                        file_path=data.get("file_path", file_path),
-                        functions=fns,
-                    )
+                        fn_obj = FunctionAstInfo(**f)
+                        if fn_obj.line_start == 0:
+                            m = re.search(r'\bfn\s+' + re.escape(fn_obj.name) + r'\b', code)
+                            if m:
+                                fn_obj.line_start = code[:m.start()].count('\n') + 1
+                                _, _, fn_obj.line_end = self._extract_block(code, m.start(), code.splitlines())
+                        fns.append(fn_obj)
+
+                    if fns:
+                        self._resolve_statement_lines(code, fns)
+                        return AnalysisResult(
+                            success=True,
+                            error=None,
+                            file_path=data.get("file_path", file_path),
+                            functions=fns,
+                        )
 
             except Exception:
                 pass
@@ -160,6 +177,15 @@ class RustParser:
             )
             functions.append(fn_info)
 
+        if not functions:
+            return AnalysisResult(
+                success=False,
+                error="No Rust functions detected. Please provide a valid Rust subroutine (e.g. `fn my_function() { ... }`).",
+                file_path=file_path,
+                functions=[],
+            )
+
+        self._resolve_statement_lines(code, functions)
         return AnalysisResult(
             success=True,
             error=None,
@@ -204,3 +230,31 @@ class RustParser:
                 )
             )
         return stmts
+
+    def _resolve_statement_lines(self, code: str, functions: List[FunctionAstInfo]) -> None:
+        """
+        Maps each statement to its exact 1-based source line number within the function scope.
+        """
+        lines = code.splitlines()
+        for fn in functions:
+            fn_start = max(1, fn.line_start)
+            fn_end = min(len(lines), fn.line_end) if fn.line_end >= fn_start else len(lines)
+            fn_lines = lines[fn_start - 1 : fn_end]
+
+            curr_search_idx = 0
+            for stmt in fn.statements:
+                if stmt.line_number > 0:
+                    continue
+
+                target_tokens = [t for t in re.findall(r'\b\w+\b', stmt.code) if t not in ('let', 'mut', 'pub', 'fn')]
+                matched_offset = curr_search_idx
+
+                if target_tokens:
+                    primary_token = target_tokens[0]
+                    for offset in range(curr_search_idx, len(fn_lines)):
+                        if primary_token in fn_lines[offset]:
+                            matched_offset = offset
+                            break
+
+                stmt.line_number = fn_start + matched_offset
+                curr_search_idx = matched_offset

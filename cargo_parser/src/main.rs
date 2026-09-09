@@ -3,7 +3,7 @@ use std::env;
 use std::fs;
 use std::io::{self, Read};
 use syn::visit::Visit;
-use syn::{Expr, File, ItemFn, Local, Stmt};
+use syn::{Expr, ItemFn, Local, Stmt};
 
 #[derive(Serialize, Debug)]
 struct AnalysisOutput {
@@ -39,6 +39,7 @@ struct StatementSummary {
     has_clone: bool,
     has_unsafe: bool,
     has_allocation: bool,
+    line_number: usize,
 }
 
 struct FunctionVisitor {
@@ -48,7 +49,8 @@ struct FunctionVisitor {
 impl<'ast> Visit<'ast> for FunctionVisitor {
     fn visit_item_fn(&mut self, node: &'ast ItemFn) {
         let fn_name = node.sig.ident.to_string();
-        let vis = quote::quote!(#node.vis).to_string();
+        let node_vis = &node.vis;
+        let vis = quote::quote!(#node_vis).to_string();
         let is_unsafe = node.sig.unsafety.is_some();
         let is_async = node.sig.asyncness.is_some();
 
@@ -59,7 +61,8 @@ impl<'ast> Visit<'ast> for FunctionVisitor {
             .map(|arg| quote::quote!(#arg).to_string())
             .collect();
 
-        let output_type = quote::quote!(#node.sig.output).to_string();
+        let sig_output = &node.sig.output;
+        let output_type = quote::quote!(#sig_output).to_string();
 
         let mut info = FunctionAstInfo {
             name: fn_name,
@@ -92,6 +95,7 @@ fn analyze_fn_body(block: &syn::Block, info: &mut FunctionAstInfo) {
             has_clone: false,
             has_unsafe: false,
             has_allocation: false,
+            line_number: 0,
         };
 
         inspect_stmt(stmt, info, &mut stmt_info);
@@ -212,7 +216,7 @@ fn main() {
         }
     } else {
         let mut buffer = String::new();
-        if let Err(e) = io::stdin().read_to_string(&buffer) {
+        if let Err(e) = io::stdin().read_to_string(&mut buffer) {
             let output = AnalysisOutput {
                 success: false,
                 error: Some(format!("Failed to read from stdin: {}", e)),
