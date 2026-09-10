@@ -85,7 +85,7 @@ The dashboard provides two distinct perspectives on the synthesized RQI score:
 
 #### Perspective A: Non-Developer Mode RQI Showcase Card (`#non-dev-rqi-card`)
 1. **Hero RQI Radial Dial:**
-   - Circular SVG gauge animating to the computed composite score ($0.00 \le \text{RQI} \le 100.00$).
+   - Circular SVG gauge animating to the computed composite score ($0 \le \text{RQI} \le 100$). Formatted to omit `.0` for whole numbers (e.g. `100` instead of `100.0`, while retaining decimal precision like `83.5` for fractional scores).
    - Dynamically color-coded based on score tiers:
      - **$\ge 90.0$:** Emerald Green (`#10b981`)
      - **$80.0 - 89.9$:** Sky Blue (`#38bdf8`)
@@ -94,20 +94,20 @@ The dashboard provides two distinct perspectives on the synthesized RQI score:
 2. **Qualitative Grade Badge (`#rqi-grade`):** 
    - Explicit letter grade string: `A+ (Idiomatic & Robust)`, `A (Good Quality)`, `B (Acceptable)`, `C (Needs Refactoring)`, `D (High Risk)`, or `F (Critical Vulnerability)`.
 3. **Synthesis Summary Text (`#rqi-summary-text`):** Human-readable quality health verdict.
-4. **2x2 Core Vectors Grid:** Four individual circular mini-gauges displaying the exact scores for:
+4. **2x2 Core Vectors Grid:** Four individual circular mini-gauges displaying the exact scores (cleanly formatted without `.0`) for:
    - **Safety Vector** (Weight: $30\%$)
    - **Performance Vector** (Weight: $25\%$)
    - **Maintainability Vector** (Weight: $25\%$)
    - **Security Vector** (Weight: $20\%$)
 
 #### Perspective B: Developer Mode RQI Matrix Card (`#dev-rqi-card`)
-1. **RQI Score Dial & Raw Metric Value (`#dev-rqi-score-num`):** Precise decimal score display without marketing labels.
+1. **RQI Score Dial & Raw Metric Value (`#dev-rqi-score-num`):** Score display without marketing labels, formatted without `.0` (e.g. `100`).
 2. **Mathematical Formula Block:** 
    - Displays the exact linear weighted matrix formula:
      $$\text{Base RQI} = (0.30 \times S) + (0.25 \times P) + (0.25 \times M) + (0.20 \times \text{SEC}) - \text{Penalty}$$
 3. **Calculation Chips:**
-   - **Linear Weighted Sum Chip (`#dev-calc-weighted-sum`):** Shows the raw pre-penalty weighted sum (e.g. `83.8`).
-   - **Penalty Applied Chip (`#dev-calc-penalty-val`):** Displays `-1.7 pts (Penalty Triggered)` in crimson or `0.0 pts (No Penalty)` in emerald.
+   - **Linear Weighted Sum Chip (`#dev-calc-weighted-sum`):** Shows the raw pre-penalty weighted sum (e.g. `100` or `83.8`).
+   - **Penalty Applied Chip (`#dev-calc-penalty-val`):** Displays `-1.7 pts (Penalty Triggered)` in crimson or `0 pts (No Penalty)` in emerald.
 4. **Vertical Vectors Breakdown Stack (`#dev-vectors-vertical-list`):**
    - Four full-width horizontal cards stacked vertically for Safety, Performance, Maintainability, and Security.
    - Each card contains an SVG gauge, score, and a comprehensive breakdown of **Pros (green checkmark tags)** and **Cons/Deductions (red negative tags)** with MITRE CWE link pills and source line numbers.

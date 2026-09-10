@@ -253,6 +253,21 @@ class RustAuditPDFReportGenerator:
             return ""
         return html.escape(str(text))
 
+    def _format_score(self, val: Any, max_decimals: int = 1) -> str:
+        """Format scores without trailing .0 (e.g. 100.0 -> 100, 83.5 -> 83.5)."""
+        try:
+            num = float(val)
+            if num == 0 or num == 0.0:
+                return "0"
+            s = f"{num:.{max_decimals}f}"
+            if s.endswith(".0"):
+                return s[:-2]
+            if "." in s:
+                s = s.rstrip("0").rstrip(".")
+            return s
+        except (ValueError, TypeError):
+            return str(val)
+
     def _get_grade_color(self, grade: str) -> colors.HexColor:
         grade_upper = str(grade).upper()
         if "A" in grade_upper:
@@ -388,7 +403,7 @@ class RustAuditPDFReportGenerator:
             rows.append([
                 Paragraph(f"<code>{self._safe_text(fn.get('name', 'subroutine'))}</code>", self.style_table_cell),
                 Paragraph(line_str, self.style_table_cell),
-                Paragraph(f"<b>{score:.1f}</b>", self.style_table_cell),
+                Paragraph(f"<b>{self._format_score(score)}</b>", self.style_table_cell),
                 Paragraph(self._safe_text(grade[:8]), self.style_table_cell),
                 Paragraph(str(len(cwe_tags)), self.style_table_cell),
                 Paragraph(status, self.style_table_cell),
@@ -516,7 +531,7 @@ class RustAuditPDFReportGenerator:
         left_cell_elements = [
             Paragraph("COMPOSITE RQI SCORE", self.style_meta_label),
             Spacer(1, 4),
-            Paragraph(f"{rqi_score:.1f} <font size=13 color='#64748b'>/ 100</font>", self.style_score_big),
+            Paragraph(f"{self._format_score(rqi_score)} <font size=13 color='#64748b'>/ 100</font>", self.style_score_big),
             Spacer(1, 6),
             Table(
                 [[Paragraph(self._safe_text(grade), self.style_grade_badge)]],
@@ -595,8 +610,8 @@ class RustAuditPDFReportGenerator:
             vector_rows.append([
                 Paragraph(name, self.style_table_cell),
                 Paragraph(weight, self.style_table_cell),
-                Paragraph(f"{score:.1f}", self.style_table_cell),
-                Paragraph(f"{weighted:.2f}", self.style_table_cell),
+                Paragraph(self._format_score(score), self.style_table_cell),
+                Paragraph(self._format_score(weighted, 2), self.style_table_cell),
                 Paragraph(status_str, self.style_table_cell),
             ])
 

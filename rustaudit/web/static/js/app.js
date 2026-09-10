@@ -44,6 +44,15 @@ document.addEventListener("DOMContentLoaded", () => {
             .replace(/'/g, "&#039;");
     }
 
+    // Helper to format score numbers: strip trailing .0 if integer, else preserve 1 decimal (e.g. 100.0 -> 100, 83.5 -> 83.5)
+    function formatScore(score) {
+        if (score === null || score === undefined || isNaN(score)) return "0";
+        const num = Number(score);
+        if (num === 0) return "0";
+        const str = num.toFixed(1);
+        return str.endsWith(".0") ? str.slice(0, -2) : str;
+    }
+
     const astNodesCnt = document.getElementById("ast-nodes-cnt");
     const cfgCcCnt = document.getElementById("cfg-cc-cnt");
     const flogAllocCnt = document.getElementById("flog_alloc_cnt");
@@ -374,12 +383,12 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
         const trimmed = explanationText.trim().replace(/\s*---\s*$/, "").trim();
 
         // Check for optimal subroutine message
-        if (trimmed.includes("perfect Rust Quality Index") || trimmed.includes("Optimal quality") || trimmed.includes("100.00 / 100")) {
+        if (trimmed.includes("perfect Rust Quality Index") || trimmed.includes("Optimal quality") || trimmed.includes("100 / 100") || trimmed.includes("100.00 / 100")) {
             container.innerHTML = `
                 <div class="xai-optimal-card">
                     <div class="xai-optimal-header">
                         <i class="fa-solid fa-circle-check"></i>
-                        <span>Optimal Quality Invariant (RQI 100.00 / 100)</span>
+                        <span>Optimal Quality Invariant (RQI 100 / 100)</span>
                     </div>
                     <div class="xai-optimal-body">
                         ${formatMarkdownContent(trimmed)}
@@ -639,9 +648,9 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
         const fnData = currentAnalysisData.functions[activeFnIndex];
         const rqi = fnData.rqi;
 
-        // RQI Main Gauge (FLOAT with decimal point)
-        rqiScoreNum.textContent = rqi.rqi_score.toFixed(1);
-        scoreCirclePath.setAttribute("stroke-dasharray", `${rqi.rqi_score.toFixed(1)}, 100`);
+        // RQI Main Gauge (strips .0 e.g. 100.0 -> 100, preserves 83.5)
+        rqiScoreNum.textContent = formatScore(rqi.rqi_score);
+        scoreCirclePath.setAttribute("stroke-dasharray", `${rqi.rqi_score}, 100`);
 
         // Parse Grade Letter and Text (e.g. "A (Good Quality)" -> letter "A", text "Good Quality")
         const rawGrade = rqi.grade || "A (Good Quality)";
@@ -678,32 +687,32 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
             rqiGradeText.style.borderColor = gradeBorder;
         }
 
-        // 4 Vector Gauges (INTEGER VALUES)
+        // 4 Vector Gauges (Formatted without .0)
         const intSafety = Math.round(rqi.safety_score);
         const intPerf = Math.round(rqi.performance_score);
         const intMaint = Math.round(rqi.maintainability_score);
         const intSec = Math.round(rqi.security_score);
 
-        valSafety.textContent = intSafety;
+        valSafety.textContent = formatScore(intSafety);
         if (pathSafety) pathSafety.setAttribute("stroke-dasharray", `${intSafety}, 100`);
 
-        valPerf.textContent = intPerf;
+        valPerf.textContent = formatScore(intPerf);
         if (pathPerf) pathPerf.setAttribute("stroke-dasharray", `${intPerf}, 100`);
 
-        valMaint.textContent = intMaint;
+        valMaint.textContent = formatScore(intMaint);
         if (pathMaint) pathMaint.setAttribute("stroke-dasharray", `${intMaint}, 100`);
 
-        valSec.textContent = intSec;
+        valSec.textContent = formatScore(intSec);
         if (pathSec) pathSec.setAttribute("stroke-dasharray", `${intSec}, 100`);
 
         // Render Developer Mode RQI Analysis Card (No Grade Letter or Label!)
-        if (devRqiScoreNum) devRqiScoreNum.textContent = rqi.rqi_score.toFixed(1);
-        if (devScoreCirclePath) devScoreCirclePath.setAttribute("stroke-dasharray", `${rqi.rqi_score.toFixed(1)}, 100`);
+        if (devRqiScoreNum) devRqiScoreNum.textContent = formatScore(rqi.rqi_score);
+        if (devScoreCirclePath) devScoreCirclePath.setAttribute("stroke-dasharray", `${rqi.rqi_score}, 100`);
 
-        const weightedSum = (0.30 * intSafety + 0.25 * intPerf + 0.25 * intMaint + 0.20 * intSec).toFixed(1);
-        if (devCalcWeightedSum) devCalcWeightedSum.textContent = weightedSum;
+        const weightedSumRaw = 0.30 * intSafety + 0.25 * intPerf + 0.25 * intMaint + 0.20 * intSec;
+        if (devCalcWeightedSum) devCalcWeightedSum.textContent = formatScore(weightedSumRaw);
         if (devCalcPenaltyVal) {
-            devCalcPenaltyVal.textContent = rqi.penalty_applied ? "-1.7 pts (Penalty Triggered)" : "0.0 pts (No Penalty)";
+            devCalcPenaltyVal.textContent = rqi.penalty_applied ? "-1.7 pts (Penalty Triggered)" : "0 pts (No Penalty)";
             devCalcPenaltyVal.style.color = rqi.penalty_applied ? "#f87171" : "#34d399";
         }
 
@@ -769,7 +778,7 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
                                     ${cweLink}
                                     ${lineBadge}
                                     <span class="dev-con-desc">${escapeHtml(sc.description)}</span>
-                                    <span class="dev-con-penalty">(-${Number(sc.penalty || 0).toFixed(1)} pts)</span>
+                                    <span class="dev-con-penalty">(-${formatScore(sc.penalty || 0)} pts)</span>
                                 </div>
                                 ${sc.remediation ? `<div class="dev-con-remediation"><i class="fa-solid fa-wrench"></i> ${escapeHtml(sc.remediation)}</div>` : ''}
                             </div>
@@ -788,7 +797,7 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
                             <svg viewBox="0 0 36 36" class="mini-chart">
                                 <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
                                 <path class="circle" style="stroke: ${vc.color};" stroke-dasharray="${vc.score}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                                <text x="18" y="20.35" class="mini-percentage">${vc.score}</text>
+                                <text x="18" y="20.35" class="mini-percentage">${formatScore(vc.score)}</text>
                             </svg>
                         </div>
                         <div class="v-title-box">
@@ -862,7 +871,7 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
                     <span class="cwe-vector-tag vector-${d.vector}"><i class="fa-solid fa-layer-group"></i> ${d.vector.toUpperCase()}</span>
                 ` : '';
 
-                const penaltyHtml = `<span class="deduction-penalty">-${Number(d.penalty || 0).toFixed(1)} pts</span>`;
+                const penaltyHtml = `<span class="deduction-penalty">-${formatScore(d.penalty || 0)} pts</span>`;
 
                 const codeHtml = d.statement_code ? `
                     <div class="cwe-code-snippet"><code>${escapeHtml(d.statement_code)}</code></div>
@@ -929,7 +938,7 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
                 } else {
                     renderXAIExplanation(fnData.xai_report.explanation, xaiExplanationText);
                     if (fnData.rqi && fnData.rqi.rqi_score >= 100.0 && !fnData.xai_report.refactored_code) {
-                        xaiPatchCode.textContent = "// Optimal Subroutine (RQI 100.00 / 100). No refactoring required.";
+                        xaiPatchCode.textContent = "// Optimal Subroutine (RQI 100 / 100). No refactoring required.";
                         if (copyPatchBtn) copyPatchBtn.style.display = "none";
                     } else {
                         xaiPatchCode.textContent = fnData.xai_report.refactored_code || "// No refactored patch required";

@@ -14,6 +14,10 @@
     <!-- Vis-Network for Interactive Graph Canvas -->
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
 
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link rel="shortcut icon" href="/static/favicon.ico">
+
     <!-- Custom Design System Styles -->
     <link rel="stylesheet" href="/static/css/style.css?v=cwe_final">
 </head>
@@ -22,7 +26,9 @@
         <!-- Top Navigation Header -->
         <header class="app-header">
             <div class="brand-badge">
-                <div class="logo-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <div class="logo-icon">
+                    <img src="/static/logo.png" alt="RustAuditAI Logo" class="brand-logo-img">
+                </div>
                 <div class="brand-text">
                     <h1>RustAudit<span>AI</span></h1>
                     <p>Intra-Procedural Quality Intelligence & Graph Analysis</p>
@@ -309,6 +315,6 @@ pub fn process_data(data: &str) -> String {
     </div>
 
     <!-- App JavaScript -->
-    <script src="/static/js/app.js?v=readability_v3"></script>
+    <script src="/static/js/app.js?v=score_fmt_v4"></script>
 </body>
 </html>
