@@ -60,8 +60,11 @@ The interface is structured into **two primary panels** flanked by a top navigat
   5. **Interactive Code Editor (`#code-editor`):**
      - Dark-themed monospace editing area styled with Fira Code.
      - Supports full tab key indentation, line counting, scroll synchronization, and syntax formatting.
-  6. **Enable XAI Engine Toggle (`#enable-xai-toggle`):** A switch allowing users to opt into or out of automated LLM refactoring report generation during graph analysis.
-  7. **Execute Graph Audit Button (`#analyze-btn`):** The primary call-to-action button featuring a wand-sparkle animation that compiles the AST, extracts FLOG ownership edges, computes RQI, and renders the intelligence report.
+  6. **Revision Ledger Button & Counter Badge (`#revisions-toggle-btn`):**
+     - Displays `Revisions <count>` badge (`#rev-count-badge`) indicating active recorded snapshots for the subroutine.
+     - Clicking slides open the **Intra-Procedural Revision Ledger Drawer (`#revision-history-drawer`)** with chronological snapshots, diff metadata, and one-click rollback.
+  7. **Enable XAI Engine Toggle (`#enable-xai-toggle`):** A switch allowing users to opt into or out of automated LLM refactoring report generation during graph analysis.
+  8. **Execute Graph Audit Button (`#analyze-btn`):** The primary call-to-action button featuring a wand-sparkle animation that compiles the AST, extracts FLOG ownership edges, computes RQI, and renders the intelligence report.
 
 ---
 
@@ -185,10 +188,12 @@ The dashboard provides two distinct perspectives on the synthesized RQI score:
      - A dedicated, syntax-highlighted code container displaying the **complete, compilable, idiomatic Rust refactored patch**.
      - Implements functional decomposition (breaking monolithic subroutines into single-responsibility helper functions with $V(G) \le 2$).
      - Eliminates all `unsafe` blocks, replaces raw pointers with safe abstractions, removes redundant heap `.clone()` calls, and averts panicking operations.
-     - Evaluates to near $100\%$ RQI (Grade A+).
-  4. **One-Click Copy Patch Button (`#copy-patch-btn`):**
-     - Floating copy button with clipboard icon (`fa-copy`).
-     - Copies the entire standalone refactored patch to the developer's clipboard and provides a green checkmark confirmation (`Copied!`).
+     - Evaluates to near $100\%$ RQI (Gra   4. **One-Click Apply Patch Button (`#apply-patch-btn`):**
+      - Direct action button with magic wand icon (`fa-magic`).
+      - Injects the refactored patch candidate directly into Code Area 1, records an automated revision snapshot (`PATCH_APPLIED`), and triggers auto-analysis to instantly verify the near 100% RQI improvement.
+   5. **One-Click Copy Patch Button (`#copy-patch-btn`):**
+      - Floating copy button with clipboard icon (`fa-copy`).
+      - Copies the entire standalone refactored patch to the developer's clipboard and provides a green checkmark confirmation (`Copied!`).
 
 ---
 
@@ -202,25 +207,28 @@ The dashboard provides two distinct perspectives on the synthesized RQI score:
 | **4** | Loaded File Badge | Left Panel | `#file-badge` | Displays loaded filename with quick-clear (`×`) button. |
 | **5** | Drag-and-Drop Overlay | Left Panel | `#drop-overlay` | Animated drop zone when dragging `.rs` files onto the editor. |
 | **6** | Load Sample Button | Left Panel | `#load-sample-btn` | Pre-fills editor with calibrated sample Rust subroutine code. |
-| **7** | **Code Area 1 (Editor)** | Left Panel | `#code-editor` | Primary source code editing textarea with tab indentation support. |
-| **8** | Enable XAI Toggle | Left Panel | `#enable-xai-toggle` | Checkbox toggling automated AI refactoring report generation. |
-| **9** | Execute Graph Audit Btn | Left Panel | `#analyze-btn` | Primary call-to-action button triggering `/api/analyze`. |
-| **10** | Function Selector Tabs | Results Bar | `#function-tabs` | Dynamic tabs switching analysis views across multiple subroutines. |
-| **11** | Export PDF Report Btn | Results Bar | `#export-pdf-btn` | Generates and downloads publication-grade audit PDF report. |
-| **12** | RQI Radial Dial (Hero) | Non-Dev Mode | `#score-circle-path` | Animated circular SVG gauge showing composite RQI score ($0-100$). |
-| **13** | RQI Grade Badge | Non-Dev Mode | `#rqi-grade` | Qualitative letter grade (`A+`, `A`, `B`, `C`, `D`, `F`). |
-| **14** | Vector Mini-Dials (2x2) | Non-Dev Mode | `.mini-dial`, `#val-safety`, etc. | Circular gauges for Safety (30%), Perf (25%), Maint (25%), Sec (20%). |
-| **15** | CWE Tracking Counter Strip | Non-Dev Mode | `#cwe-summary-bar` | Summary counter strip: Total, Critical, High, Medium, Low weaknesses. |
-| **16** | Deduction Cards List | Non-Dev Mode | `#deductions-list` | Line-tagged cards showing exact statement, severity, and deduction points. |
-| **17** | RQI Matrix Formula Block | Dev Mode | `.formula-box`, `.dev-rqi-calc-right` | Explains the mathematical weighted sum formula and applied penalties. |
-| **18** | Vertical Vectors Breakdown | Dev Mode | `#dev-vectors-vertical-list` | 4 full-width rows with mini-charts, pros tags, and deduction breakdowns. |
-| **19** | **Graph 1: FLOG Graph** | Dev Mode | `.graph-type-btn[data-graph="flog"]` | Visualizes ownership, borrow lifetimes, clones, heap allocs, and unsafe. |
-| **20** | **Graph 2: CFG Graph** | Dev Mode | `.graph-type-btn[data-graph="cfg"]` | Visualizes basic blocks, branch conditions, loops, and McCabe V(G). |
-| **21** | **Graph 3: AST Graph** | Dev Mode | `.graph-type-btn[data-graph="ast"]` | Visualizes hierarchical grammar syntax tree derived via `syn`. |
-| **22** | **Graph 4: Unified CPG** | Dev Mode | `.graph-type-btn[data-graph="cpg"]` | Composite multi-layer graph linking AST, CFG, and FLOG via semantic edges. |
-| **23** | Vis.js Interactive Canvas | Dev Mode | `#interactive-canvas` | Physics-simulated interactive network diagram with zoom, pan, and dragging. |
-| **24** | Graph Metrics Status Bar | Dev Mode | `#graph-metrics-bar` | Counters: AST Nodes, CFG V(G), FLOG Allocs, FLOG Clones, CPG Edges. |
-| **25** | Graph Outliers Drawer | Dev Mode | `#outliers-content-list` | Structural graph anomaly cards with CWE tags and topological advice. |
-| **26** | XAI Root Cause Cards | Non-Dev Mode | `#xai-explanation-text` | Sequentially numbered cards explaining root cause flaw and remediation. |
-| **27** | **Code Area 2 (Refactored Patch)**| Non-Dev Mode | `#xai-patch-code` | Standalone, compilable idiomatic Rust refactored code (~100% RQI). |
-| **28** | Copy Patch Button | Non-Dev Mode | `#copy-patch-btn` | One-click clipboard copy button with visual confirmation feedback. |
+| **7** | Revision History Toggle | Left Panel | `#revisions-toggle-btn` | Displays revision count badge and toggles the revision ledger drawer. |
+| **8** | **Code Area 1 (Editor)** | Left Panel | `#code-editor` | Primary source code editing textarea with tab indentation support. |
+| **9** | Enable XAI Toggle | Left Panel | `#enable-xai-toggle` | Checkbox toggling automated AI refactoring report generation. |
+| **10** | Execute Graph Audit Btn | Left Panel | `#analyze-btn` | Primary call-to-action button triggering `/api/analyze`. |
+| **11** | Function Selector Tabs | Results Bar | `#function-tabs` | Dynamic tabs switching analysis views across multiple subroutines. |
+| **12** | Export PDF Report Btn | Results Bar | `#export-pdf-btn` | Generates and downloads publication-grade audit PDF report. |
+| **13** | RQI Radial Dial (Hero) | Non-Dev Mode | `#score-circle-path` | Animated circular SVG gauge showing composite RQI score ($0-100$). |
+| **14** | RQI Grade Badge | Non-Dev Mode | `#rqi-grade` | Qualitative letter grade (`A+`, `A`, `B`, `C`, `D`, `F`). |
+| **15** | Vector Mini-Dials (2x2) | Non-Dev Mode | `.mini-dial`, `#val-safety`, etc. | Circular gauges for Safety (30%), Perf (25%), Maint (25%), Sec (20%). |
+| **16** | CWE Tracking Counter Strip | Non-Dev Mode | `#cwe-summary-bar` | Summary counter strip: Total, Critical, High, Medium, Low weaknesses. |
+| **17** | Deduction Cards List | Non-Dev Mode | `#deductions-list` | Line-tagged cards showing exact statement, severity, and deduction points. |
+| **18** | RQI Matrix Formula Block | Dev Mode | `.formula-box`, `.dev-rqi-calc-right` | Explains the mathematical weighted sum formula and applied penalties. |
+| **19** | Vertical Vectors Breakdown | Dev Mode | `#dev-vectors-vertical-list` | 4 full-width rows with mini-charts, pros tags, and deduction breakdowns. |
+| **20** | **Graph 1: FLOG Graph** | Dev Mode | `.graph-type-btn[data-graph="flog"]` | Visualizes ownership, borrow lifetimes, clones, heap allocs, and unsafe. |
+| **21** | **Graph 2: CFG Graph** | Dev Mode | `.graph-type-btn[data-graph="cfg"]` | Visualizes basic blocks, branch conditions, loops, and McCabe V(G). |
+| **22** | **Graph 3: AST Graph** | Dev Mode | `.graph-type-btn[data-graph="ast"]` | Visualizes hierarchical grammar syntax tree derived via `syn`. |
+| **23** | **Graph 4: Unified CPG** | Dev Mode | `.graph-type-btn[data-graph="cpg"]` | Composite multi-layer graph linking AST, CFG, and FLOG via semantic edges. |
+| **24** | Vis.js Interactive Canvas | Dev Mode | `#interactive-canvas` | Physics-simulated network diagram with zoom, pan, and dragging. |
+| **25** | Graph Metrics Status Bar | Dev Mode | `#graph-metrics-bar` | Counters: AST Nodes, CFG V(G), FLOG Allocs, FLOG Clones, CPG Edges. |
+| **26** | Graph Outliers Drawer | Dev Mode | `#outliers-content-list` | Structural graph anomaly cards with CWE tags and topological advice. |
+| **27** | XAI Root Cause Cards | Non-Dev Mode | `#xai-explanation-text` | Sequentially numbered cards explaining root cause flaw and remediation. |
+| **28** | **Code Area 2 (Refactored Patch)**| Non-Dev Mode | `#xai-patch-code` | Standalone, compilable idiomatic Rust refactored code (~100% RQI). |
+| **29** | Apply Patch Button | Non-Dev Mode | `#apply-patch-btn` | Applies patch candidate to editor, creates revision, and re-audits. |
+| **30** | Copy Patch Button | Non-Dev Mode | `#copy-patch-btn` | One-click clipboard copy button with visual confirmation feedback. |
+| **31** | **Revision Ledger Drawer** | Slide-out Drawer | `#revision-history-drawer` | SRS §4.6.7 chronological audit trail cards with rollback buttons. |

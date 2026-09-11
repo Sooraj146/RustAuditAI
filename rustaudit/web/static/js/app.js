@@ -1,5 +1,6 @@
 /**
- * RustAuditAI Web Dashboard Client Logic
+ * RustAuditAI Web Dashboard Client Logic (Unstyled / Functional)
+ * Master design blueprint archived in UI_DASHBOARD_COMPONENTS.md
  */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -7,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const loadSampleBtn = document.getElementById("load-sample-btn");
     const analyzeBtn = document.getElementById("analyze-btn");
     const enableXaiToggle = document.getElementById("enable-xai-toggle");
+    const devModeToggle = document.getElementById("developer-mode-toggle");
 
     const emptyState = document.getElementById("welcome-empty-state");
     const loaderState = document.getElementById("loader-state");
@@ -14,18 +16,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const functionTabs = document.getElementById("function-tabs");
     const rqiScoreNum = document.getElementById("rqi-score-num");
-    const rqiGrade = document.getElementById("rqi-grade");
-    const rqiSummaryText = document.getElementById("rqi-summary-text");
-    const scoreCirclePath = document.getElementById("score-circle-path");
+    const rqiGradeLetter = document.getElementById("rqi-grade-letter");
+    const rqiGradeText = document.getElementById("rqi-grade-text");
 
     const valSafety = document.getElementById("val-safety");
-    const barSafety = document.getElementById("bar-safety");
     const valPerf = document.getElementById("val-perf");
-    const barPerf = document.getElementById("bar-perf");
     const valMaint = document.getElementById("val-maint");
-    const barMaint = document.getElementById("bar-maint");
     const valSec = document.getElementById("val-sec");
-    const barSec = document.getElementById("bar-sec");
 
     const deductionsList = document.getElementById("deductions-list");
     const cweCountTotal = document.getElementById("cwe-count-total");
@@ -34,37 +31,39 @@ document.addEventListener("DOMContentLoaded", () => {
     const cweCountMedium = document.getElementById("cwe-count-medium");
     const cweCountLow = document.getElementById("cwe-count-low");
 
-    function escapeHtml(str) {
-        if (str === null || str === undefined) return "";
-        return String(str)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    }
-
-    // Helper to format score numbers: strip trailing .0 if integer, else preserve 1 decimal (e.g. 100.0 -> 100, 83.5 -> 83.5)
-    function formatScore(score) {
-        if (score === null || score === undefined || isNaN(score)) return "0";
-        const num = Number(score);
-        if (num === 0) return "0";
-        const str = num.toFixed(1);
-        return str.endsWith(".0") ? str.slice(0, -2) : str;
-    }
+    const devRqiCard = document.getElementById("dev-rqi-card");
+    const devRqiScoreNum = document.getElementById("dev-rqi-score-num");
+    const devCalcWeightedSum = document.getElementById("dev-calc-weighted-sum");
+    const devCalcPenaltyVal = document.getElementById("dev-calc-penalty-val");
+    const devVectorsList = document.getElementById("dev-vectors-vertical-list");
+    const devGraphContainer = document.getElementById("dev-graph-container");
+    const interactiveCanvas = document.getElementById("interactive-canvas");
 
     const astNodesCnt = document.getElementById("ast-nodes-cnt");
     const cfgCcCnt = document.getElementById("cfg-cc-cnt");
     const flogAllocCnt = document.getElementById("flog_alloc_cnt");
     const flogClonesCnt = document.getElementById("flog_clones_cnt");
     const cpgEdgesCnt = document.getElementById("cpg-edges-cnt");
+    const outliersContentList = document.getElementById("outliers-content-list");
 
     const xaiSection = document.getElementById("xai-section");
     const xaiExplanationText = document.getElementById("xai-explanation-text");
     const xaiPatchCode = document.getElementById("xai-patch-code");
     const copyPatchBtn = document.getElementById("copy-patch-btn");
+    const applyPatchBtn = document.getElementById("apply-patch-btn");
 
-    // File Upload Elements
+    // Revisions
+    const revisionsToggleBtn = document.getElementById("revisions-toggle-btn");
+    const revCountBadge = document.getElementById("rev-count-badge");
+    const revisionDrawerOverlay = document.getElementById("revision-drawer-overlay");
+    const revisionHistoryDrawer = document.getElementById("revision-history-drawer");
+    const closeDrawerBtn = document.getElementById("close-drawer-btn");
+    const drawerFnSubtitle = document.getElementById("drawer-fn-subtitle");
+    const revisionsTimelineContainer = document.getElementById("revisions-timeline-container");
+    const revisionsEmptyState = document.getElementById("revisions-empty-state");
+    const clearRevisionsBtn = document.getElementById("clear-revisions-btn");
+
+    // Upload
     const uploadFileBtn = document.getElementById("upload-file-btn");
     const fileUploadInput = document.getElementById("file-upload-input");
     const fileBadge = document.getElementById("file-badge");
@@ -73,11 +72,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const editorWrapper = document.getElementById("editor-wrapper");
     const dropOverlay = document.getElementById("drop-overlay");
 
-    // Report Export Elements
+    // Export
     const exportPdfBtn = document.getElementById("export-pdf-btn");
 
     let currentAnalysisData = null;
     let activeFnIndex = 0;
+    let activeGraphType = "flog";
+    let networkInstance = null;
 
     const sampleRustCode = `// RustAuditAI Sample Subroutine
 pub fn process_user_data(data: &str) -> String {
@@ -105,480 +106,128 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
     sum
 }`;
 
-    // Load sample Rust code
+    // Sample Loader
     if (loadSampleBtn) {
-        loadSampleBtn.addEventListener("click", (e) => {
-            e.preventDefault();
+        loadSampleBtn.addEventListener("click", () => {
             if (codeEditor) {
                 codeEditor.value = sampleRustCode;
-                codeEditor.focus();
-                codeEditor.dispatchEvent(new Event("input", { bubbles: true }));
             }
             if (fileBadge && fileNameText) {
                 fileNameText.textContent = "sample_func.rs";
-                fileBadge.classList.remove("hidden");
+                fileBadge.style.display = "inline";
             }
         });
     }
 
-    // File Upload via Web UI Logic (FileReader + Drag & Drop)
-    function loadFileContent(file) {
+    // File Upload Handler
+    function handleFile(file) {
         if (!file) return;
-
-        // Check for .rs extension
         if (!file.name.endsWith(".rs") && !file.name.endsWith(".txt")) {
-            alert(`Selected file '${file.name}' is not a Rust source file (.rs). Please choose a valid .rs file.`);
+            alert("Please select a valid Rust (.rs) file.");
             return;
         }
-
         const reader = new FileReader();
         reader.onload = (e) => {
-            const content = e.target.result;
-            if (codeEditor) {
-                codeEditor.value = content;
-                codeEditor.focus();
-                codeEditor.dispatchEvent(new Event("input", { bubbles: true }));
-            }
+            if (codeEditor) codeEditor.value = e.target.result;
             if (fileBadge && fileNameText) {
                 fileNameText.textContent = file.name;
-                fileBadge.classList.remove("hidden");
+                fileBadge.style.display = "inline";
             }
         };
-        reader.onerror = () => {
-            alert("Failed to read the file. Please ensure it is a valid UTF-8 text file.");
-        };
-        reader.readAsText(file, "UTF-8");
+        reader.readAsText(file);
     }
 
     if (uploadFileBtn && fileUploadInput) {
-        uploadFileBtn.addEventListener("click", () => {
-            fileUploadInput.value = "";
-            fileUploadInput.click();
-        });
-
-        fileUploadInput.addEventListener("change", () => {
-            if (fileUploadInput.files && fileUploadInput.files[0]) {
-                loadFileContent(fileUploadInput.files[0]);
-            }
+        uploadFileBtn.addEventListener("click", () => fileUploadInput.click());
+        fileUploadInput.addEventListener("change", (e) => {
+            if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
         });
     }
 
     if (clearFileBtn) {
-        clearFileBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            if (fileBadge) fileBadge.classList.add("hidden");
+        clearFileBtn.addEventListener("click", () => {
             if (fileUploadInput) fileUploadInput.value = "";
+            if (fileBadge) fileBadge.style.display = "none";
         });
     }
 
-    // Drag-and-Drop file handling onto code editor
+    // Drag and Drop
     if (editorWrapper) {
-        ["dragenter", "dragover"].forEach(eventName => {
-            editorWrapper.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                editorWrapper.classList.add("drag-over");
-                if (dropOverlay) dropOverlay.classList.remove("hidden");
-            });
-        });
-
-        ["dragleave", "drop"].forEach(eventName => {
-            editorWrapper.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                editorWrapper.classList.remove("drag-over");
-                if (dropOverlay) dropOverlay.classList.add("hidden");
-            });
-        });
-
-        editorWrapper.addEventListener("drop", (e) => {
-            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                loadFileContent(e.dataTransfer.files[0]);
-            }
-        });
-    }
-
-    // Copy refactored patch button
-    if (copyPatchBtn) {
-        copyPatchBtn.addEventListener("click", async (e) => {
+        editorWrapper.addEventListener("dragover", (e) => {
             e.preventDefault();
-            const textToCopy = xaiPatchCode.textContent;
-            if (!textToCopy || textToCopy.startsWith("// Error") || textToCopy.startsWith("// Optimal") || textToCopy.startsWith("// No refactored")) {
-                return;
-            }
-
-            try {
-                await navigator.clipboard.writeText(textToCopy);
-                copyPatchBtn.classList.add("copied");
-                copyPatchBtn.innerHTML = `<i class="fa-solid fa-check"></i> <span>Copied!</span>`;
-                setTimeout(() => {
-                    copyPatchBtn.classList.remove("copied");
-                    copyPatchBtn.innerHTML = `<i class="fa-regular fa-copy"></i> <span>Copy Patch</span>`;
-                }, 2000);
-            } catch (err) {
-                // Fallback for clipboard copy if navigator.clipboard API is unavailable
-                const textarea = document.createElement("textarea");
-                textarea.value = textToCopy;
-                textarea.style.position = "fixed";
-                textarea.style.opacity = "0";
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand("copy");
-                document.body.removeChild(textarea);
-                copyPatchBtn.classList.add("copied");
-                copyPatchBtn.innerHTML = `<i class="fa-solid fa-check"></i> <span>Copied!</span>`;
-                setTimeout(() => {
-                    copyPatchBtn.classList.remove("copied");
-                    copyPatchBtn.innerHTML = `<i class="fa-regular fa-copy"></i> <span>Copy Patch</span>`;
-                }, 2000);
+            if (dropOverlay) dropOverlay.style.display = "block";
+        });
+        editorWrapper.addEventListener("dragleave", (e) => {
+            e.preventDefault();
+            if (dropOverlay) dropOverlay.style.display = "none";
+        });
+        editorWrapper.addEventListener("drop", (e) => {
+            e.preventDefault();
+            if (dropOverlay) dropOverlay.style.display = "none";
+            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                handleFile(e.dataTransfer.files[0]);
             }
         });
     }
 
-    // Execute Audit API call
-    analyzeBtn.addEventListener("click", async () => {
-        const code = codeEditor.value.trim();
-        if (!code) {
-            alert("Please paste or type Rust function code before auditing!");
-            return;
-        }
-
-        const enableXai = enableXaiToggle.checked;
-
-        // UI states
-        emptyState.classList.add("hidden");
-        resultsContainer.classList.add("hidden");
-        loaderState.classList.remove("hidden");
-
-        try {
-            const res = await fetch("/api/analyze", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ code: code, explain: enableXai }),
-            });
-
-            const data = await res.json();
-
-            if (!res.ok || !data.success) {
-                alert("Audit Failed: " + (data.error || "Syntax parsing error"));
-                loaderState.classList.add("hidden");
-                emptyState.classList.remove("hidden");
+    // Execute Audit
+    if (analyzeBtn) {
+        analyzeBtn.addEventListener("click", async () => {
+            const code = codeEditor ? codeEditor.value.trim() : "";
+            if (!code) {
+                alert("Please enter or upload Rust code to analyze.");
                 return;
             }
 
-            currentAnalysisData = data;
-            activeFnIndex = 0;
-
-            loaderState.classList.add("hidden");
-            resultsContainer.classList.remove("hidden");
-
-            renderFunctionTabs();
-            renderActiveFunction();
-        } catch (err) {
-            alert("Network error: " + err.message);
-            loaderState.classList.add("hidden");
-            emptyState.classList.remove("hidden");
-        }
-    });
-
-    // Helper function to trigger browser file download from Blob
-    function triggerDownload(blob, defaultFilename, contentDisposition) {
-        let filename = defaultFilename;
-        if (contentDisposition && contentDisposition.includes("filename=")) {
-            const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition);
-            if (matches && matches[1]) {
-                filename = matches[1].replace(/['"]/g, "").trim();
-            }
-        }
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.style.display = "none";
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-        }, 300);
-    }
-
-    // Export PDF Quality Report Handler (SRS §4.6.5)
-    if (exportPdfBtn) {
-        exportPdfBtn.addEventListener("click", async () => {
-            if (!currentAnalysisData || !currentAnalysisData.functions || currentAnalysisData.functions.length === 0) {
-                alert("No audit analysis available to export. Please execute a graph audit first.");
-                return;
-            }
-
-            const activeFn = currentAnalysisData.functions[activeFnIndex];
-            const currentFilename = (fileNameText && !fileBadge.classList.contains("hidden"))
-                ? fileNameText.textContent
-                : ((activeFn && activeFn.name ? activeFn.name : "rust_subroutine") + ".rs");
-
-            const originalHtml = exportPdfBtn.innerHTML;
-            exportPdfBtn.disabled = true;
-            exportPdfBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>Exporting PDF...</span>`;
+            if (emptyState) emptyState.style.display = "none";
+            if (resultsContainer) resultsContainer.style.display = "none";
+            if (loaderState) loaderState.style.display = "block";
 
             try {
-                const response = await fetch("/api/export/pdf", {
+                const res = await fetch("/api/analyze", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        function_data: activeFn,
-                        filename: currentFilename,
+                        code: code,
+                        explain: enableXaiToggle ? enableXaiToggle.checked : true,
                     }),
                 });
 
-                if (!response.ok) {
-                    const err = await response.json().catch(() => ({}));
-                    throw new Error(err.detail || "Server failed to render PDF report.");
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    alert("Audit Failed: " + (data.error || "Syntax parsing error"));
+                    if (loaderState) loaderState.style.display = "none";
+                    if (emptyState) emptyState.style.display = "block";
+                    return;
                 }
 
-                const blob = await response.blob();
-                const disposition = response.headers.get("Content-Disposition");
-                triggerDownload(blob, `rustaudit_report_${activeFn.name || "subroutine"}.pdf`, disposition);
+                currentAnalysisData = data;
+                activeFnIndex = 0;
+
+                if (loaderState) loaderState.style.display = "none";
+                if (resultsContainer) resultsContainer.style.display = "block";
+
+                renderFunctionTabs();
+                renderActiveFunction();
             } catch (err) {
-                alert("PDF Export Error: " + err.message);
-            } finally {
-                exportPdfBtn.disabled = false;
-                exportPdfBtn.innerHTML = originalHtml;
+                alert("Network error: " + err.message);
+                if (loaderState) loaderState.style.display = "none";
+                if (emptyState) emptyState.style.display = "block";
             }
         });
     }
 
-    // XAI Readability Formatter & Card Renderer
-    function formatMarkdownContent(text) {
-        if (!text) return "";
-        let formatted = escapeHtml(text);
-        // Replace markdown inline code: `code`
-        formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
-        // Replace bold: **text**
-        formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-        // Replace LaTeX math notation: $V(G) \le 2$ or $V(G) <= 2$
-        formatted = formatted.replace(/\$V\(G\)\s*(?:\\le|&lt;=)\s*(\d+)\$/gi, 'V(G) &le; $1');
-        formatted = formatted.replace(/\$([^$]+)\$/g, '$1');
-
-        // Cleanly format multi-line bullet lists if present
-        if (formatted.includes("\n- ") || formatted.includes("\n* ") || formatted.startsWith("- ")) {
-            const bulletLines = formatted.split(/\n\s*[-*]\s*/);
-            if (bulletLines.length > 1 || formatted.startsWith("- ")) {
-                return bulletLines
-                    .map(b => b.replace(/^[-*]\s*/, '').trim())
-                    .filter(b => b.length > 0)
-                    .map(b => `<div class="xai-bullet-point"><i class="fa-solid fa-angle-right"></i> <span>${b}</span></div>`)
-                    .join("");
-            }
-        }
-        return formatted;
-    }
-
-    function renderXAIExplanation(explanationText, container) {
-        if (!container) return;
-        if (!explanationText || !explanationText.trim()) {
-            container.innerHTML = `<div class="xai-empty-notice">No architectural explanation available.</div>`;
-            return;
-        }
-
-        const trimmed = explanationText.trim().replace(/\s*---\s*$/, "").trim();
-
-        // Check for optimal subroutine message
-        if (trimmed.includes("perfect Rust Quality Index") || trimmed.includes("Optimal quality") || trimmed.includes("100 / 100") || trimmed.includes("100.00 / 100")) {
-            container.innerHTML = `
-                <div class="xai-optimal-card">
-                    <div class="xai-optimal-header">
-                        <i class="fa-solid fa-circle-check"></i>
-                        <span>Optimal Quality Invariant (RQI 100 / 100)</span>
-                    </div>
-                    <div class="xai-optimal-body">
-                        ${formatMarkdownContent(trimmed)}
-                    </div>
-                </div>
-            `;
-            return;
-        }
-
-        // Split by numbered diagnostic points at line starts: e.g. "\n1. **", "\n2. **"
-        const parts = trimmed.split(/(?:^|\n)\s*(?=\d+\.\s*(?:\*\*|[A-Z]))/);
-        let intro = "";
-        const items = [];
-
-        parts.forEach((part) => {
-            const p = part.trim();
-            if (!p) return;
-
-            const match = p.match(/^(\d+)\.\s*(.+)$/s);
-            if (match) {
-                const num = match[1];
-                const body = match[2];
-
-                let title = "";
-                let rootCause = "";
-                let remediation = "";
-                let cweId = null;
-
-                // Extract CWE if present e.g. ([CWE-119]) or [CWE-119]
-                const cweMatch = body.match(/\[(CWE-\d+)\]/i) || body.match(/\b(CWE-\d+)\b/i);
-                if (cweMatch) {
-                    cweId = cweMatch[1].toUpperCase();
-                }
-
-                // Check if there is an explicit bold title at the start: e.g. **Title ([CWE-XXX])**: or **Title**:
-                const boldTitleMatch = body.match(/^\s*\*\*([^*]+)\*\*\s*(?:[:\-–—]\s*)?(.*)$/s);
-                let remaining = body;
-
-                if (boldTitleMatch) {
-                    title = boldTitleMatch[1];
-                    remaining = boldTitleMatch[2] || "";
-                } else {
-                    const colonMatch = body.match(/^([^:\n]+)[:]\s*(.*)$/s);
-                    if (colonMatch) {
-                        title = colonMatch[1];
-                        remaining = colonMatch[2] || "";
-                    } else {
-                        // If no valid title was found and we already have a previous item,
-                        // this is prose that started with a number (e.g. "10. If the length..."), append to previous item
-                        if (items.length > 0) {
-                            const prev = items[items.length - 1];
-                            if (prev.remediation) {
-                                prev.remediation += " " + p;
-                            } else {
-                                prev.rootCause += " " + p;
-                            }
-                            return;
-                        }
-                        title = `Finding ${num}`;
-                        remaining = body;
-                    }
-                }
-
-                // Clean title of CWE tags, markdown links, and markdown markers
-                title = title.replace(/\[CWE-\d+\](?:\([^)]*\))?|\(CWE-\d+\)|\(\[CWE-\d+\]\)/gi, "")
-                             .replace(/\(\s*https?:\/\/[^\s)]+\s*\)/gi, "")
-                             .replace(/^[:\s\-*]+|[:\s\-*]+$/g, "")
-                             .replace(/\*\*/g, "")
-                             .trim();
-
-                // Now check if remaining has explicit Root Cause and Remediation labels
-                const rcMatch = remaining.match(/(?:-\s*)?\*{0,2}Root Cause\*{0,2}\s*:\s*(.+?)(?=(?:-\s*)?\*{0,2}Remediation\*{0,2}\s*:|\Z)/is);
-                const remMatch = remaining.match(/(?:-\s*)?\*{0,2}Remediation\*{0,2}\s*:\s*(.+)$/is);
-
-                if (rcMatch) {
-                    rootCause = rcMatch[1].trim();
-                    if (remMatch) {
-                        remediation = remMatch[1].trim();
-                    }
-                } else if (remMatch) {
-                    remediation = remMatch[1].trim();
-                    rootCause = remaining.substring(0, remMatch.index).trim();
-                } else {
-                    const fixMatch = remaining.match(/(?:-\s*)?\*{0,2}(?:Remediation|Fix|Solution)\*{0,2}\s*:\s*(.+)$/is);
-                    if (fixMatch) {
-                        remediation = fixMatch[1].trim();
-                        rootCause = remaining.substring(0, fixMatch.index).trim();
-                    } else {
-                        rootCause = remaining.replace(/^[:\s\-–—]+/, "").trim();
-                    }
-                }
-
-                rootCause = rootCause.replace(/^[:\s\-–—]+/, "").trim();
-
-                items.push({
-                    num: num,
-                    title: title,
-                    cweId: cweId,
-                    rootCause: rootCause,
-                    remediation: remediation,
-                });
-            } else {
-                if (!intro && items.length === 0) {
-                    intro = p;
-                }
-            }
-        });
-
-        if (items.length === 0) {
-            // Fallback for general narrative or bulleted paragraphs
-            const paragraphs = trimmed.split(/\n\s*\n/).filter(p => p.trim());
-            container.innerHTML = `
-                <div class="xai-narrative-container">
-                    ${paragraphs.map(p => `<p class="xai-narrative-p">${formatMarkdownContent(p).replace(/\n/g, '<br/>')}</p>`).join('')}
-                </div>
-            `;
-            return;
-        }
-
-        let html = "";
-
-        if (intro) {
-            html += `
-                <div class="xai-intro-banner">
-                    <i class="fa-solid fa-circle-info"></i>
-                    <span>${formatMarkdownContent(intro)}</span>
-                </div>
-            `;
-        }
-
-        html += `<div class="xai-cards-grid">`;
-
-        items.forEach((item) => {
-            const cweBadgeHtml = item.cweId ? `
-                <span class="xai-cwe-pill" title="Identified Weakness: ${item.cweId}">
-                    <i class="fa-solid fa-shield-halved"></i> ${item.cweId}
-                </span>
-            ` : '';
-
-            const causeHtml = item.rootCause ? `
-                <div class="xai-cause-box">
-                    <div class="xai-box-label">
-                        <i class="fa-solid fa-triangle-exclamation"></i>
-                        <span>Root Cause & Flaw Analysis</span>
-                    </div>
-                    <div class="xai-box-content">
-                        ${formatMarkdownContent(item.rootCause)}
-                    </div>
-                </div>
-            ` : '';
-
-            const remediationHtml = item.remediation ? `
-                <div class="xai-remediation-box">
-                    <div class="xai-box-label">
-                        <i class="fa-solid fa-wrench"></i>
-                        <span>Remediation Guidance</span>
-                    </div>
-                    <div class="xai-box-content">
-                        ${formatMarkdownContent(item.remediation)}
-                    </div>
-                </div>
-            ` : '';
-
-            html += `
-                <div class="xai-insight-card">
-                    <div class="xai-card-title-row">
-                        <div class="xai-card-title-left">
-                            <span class="xai-step-badge">${item.num}</span>
-                            <span class="xai-card-title-text">${formatMarkdownContent(item.title)}</span>
-                        </div>
-                        ${cweBadgeHtml}
-                    </div>
-                    ${causeHtml}
-                    ${remediationHtml}
-                </div>
-            `;
-        });
-
-        html += `</div>`;
-        container.innerHTML = html;
-    }
-
+    // Subroutine Tabs
     function renderFunctionTabs() {
+        if (!functionTabs || !currentAnalysisData) return;
         functionTabs.innerHTML = "";
-        if (!currentAnalysisData || !currentAnalysisData.functions) return;
-
-        currentAnalysisData.functions.forEach((fn, idx) => {
+        const fns = currentAnalysisData.functions || [];
+        fns.forEach((fn, idx) => {
             const btn = document.createElement("button");
-            btn.className = `tab-btn ${idx === activeFnIndex ? "active" : ""}`;
-            btn.innerHTML = `<i class="fa-solid fa-cube"></i> fn ${fn.name}()`;
+            btn.type = "button";
+            btn.textContent = `fn ${fn.name}() (RQI: ${fn.rqi ? fn.rqi.rqi_score.toFixed(1) : 'N/A'})`;
+            btn.style.marginRight = "8px";
+            if (idx === activeFnIndex) btn.style.fontWeight = "bold";
             btn.addEventListener("click", () => {
                 activeFnIndex = idx;
                 renderFunctionTabs();
@@ -588,517 +237,296 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
         });
     }
 
-    const devModeToggle = document.getElementById("developer-mode-toggle");
-    const devGraphContainer = document.getElementById("dev-graph-container");
-    const interactiveCanvas = document.getElementById("interactive-canvas");
-    const outliersContentList = document.getElementById("outliers-content-list");
-    const graphTypeBtns = document.querySelectorAll(".graph-type-btn");
-    const pathSafety = document.getElementById("path-safety");
-    const pathPerf = document.getElementById("path-perf");
-    const pathMaint = document.getElementById("path-maint");
-    const pathSec = document.getElementById("path-sec");
-    const rqiGradeLetter = document.getElementById("rqi-grade-letter");
-    const rqiGradeText = document.getElementById("rqi-grade-text");
-    const graphMetricsBar = document.getElementById("graph-metrics-bar");
-    const nonDevRqiCard = document.getElementById("non-dev-rqi-card");
-    const nonDevDeductionsBox = document.getElementById("non-dev-deductions-box");
-    const devRqiCard = document.getElementById("dev-rqi-card");
-    const devRqiScoreNum = document.getElementById("dev-rqi-score-num");
-    const devScoreCirclePath = document.getElementById("dev-score-circle-path");
-    const devCalcWeightedSum = document.getElementById("dev-calc-weighted-sum");
-    const devCalcPenaltyVal = document.getElementById("dev-calc-penalty-val");
-    const devVectorsVerticalList = document.getElementById("dev-vectors-vertical-list");
-
-    let networkInstance = null;
-    let activeGraphType = "flog";
-
-    // Developer Mode Toggle Event
-    devModeToggle.addEventListener("change", () => {
-        if (devModeToggle.checked) {
-            if (nonDevRqiCard) nonDevRqiCard.classList.add("hidden");
-            if (nonDevDeductionsBox) nonDevDeductionsBox.classList.add("hidden");
-            if (devRqiCard) devRqiCard.classList.remove("hidden");
-            devGraphContainer.classList.remove("hidden");
-            xaiSection.classList.add("hidden");
-            renderGraphCanvas();
-        } else {
-            if (nonDevRqiCard) nonDevRqiCard.classList.remove("hidden");
-            if (nonDevDeductionsBox) nonDevDeductionsBox.classList.remove("hidden");
-            if (devRqiCard) devRqiCard.classList.add("hidden");
-            devGraphContainer.classList.add("hidden");
-            if (currentAnalysisData && currentAnalysisData.functions[activeFnIndex]?.xai_report) {
-                xaiSection.classList.remove("hidden");
-            }
-        }
-    });
-
-    // Graph Type Switcher Buttons (FLOG, CFG, AST)
-    graphTypeBtns.forEach(btn => {
-        btn.addEventListener("click", () => {
-            graphTypeBtns.forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            activeGraphType = btn.getAttribute("data-graph");
-            renderGraphCanvas();
-        });
-    });
-
+    // Render Active Subroutine
     function renderActiveFunction() {
         if (!currentAnalysisData || !currentAnalysisData.functions[activeFnIndex]) return;
-
         const fnData = currentAnalysisData.functions[activeFnIndex];
-        const rqi = fnData.rqi;
+        const rqi = fnData.rqi || {};
 
-        // RQI Main Gauge (strips .0 e.g. 100.0 -> 100, preserves 83.5)
-        rqiScoreNum.textContent = formatScore(rqi.rqi_score);
-        scoreCirclePath.setAttribute("stroke-dasharray", `${rqi.rqi_score}, 100`);
+        if (rqiScoreNum) rqiScoreNum.textContent = rqi.rqi_score !== undefined ? rqi.rqi_score.toFixed(1) : "0";
+        if (devRqiScoreNum) devRqiScoreNum.textContent = rqi.rqi_score !== undefined ? rqi.rqi_score.toFixed(1) : "0";
 
-        // Parse Grade Letter and Text (e.g. "A (Good Quality)" -> letter "A", text "Good Quality")
-        const rawGrade = rqi.grade || "A (Good Quality)";
-        const match = rawGrade.match(/^([A-Z]\+?)\s*\((.*)\)$/);
-        let letter = "A";
-        let text = rawGrade;
-        if (match) {
-            letter = match[1];
-            text = match[2];
+        if (rqiGradeLetter && rqi.grade) {
+            const match = rqi.grade.match(/^([A-Z]\+?)\s*\((.*)\)$/);
+            rqiGradeLetter.textContent = match ? match[1] : rqi.grade;
+            if (rqiGradeText) rqiGradeText.textContent = match ? match[2] : "";
         }
 
-        if (rqiGradeLetter) rqiGradeLetter.textContent = letter;
-        if (rqiGradeText) rqiGradeText.textContent = text;
+        if (valSafety) valSafety.textContent = rqi.safety_score !== undefined ? rqi.safety_score.toFixed(1) : "0";
+        if (valPerf) valPerf.textContent = rqi.performance_score !== undefined ? rqi.performance_score.toFixed(1) : "0";
+        if (valMaint) valMaint.textContent = rqi.maintainability_score !== undefined ? rqi.maintainability_score.toFixed(1) : "0";
+        if (valSec) valSec.textContent = rqi.security_score !== undefined ? rqi.security_score.toFixed(1) : "0";
 
-        // Grade Color Scheme
-        let gradeColor = "#34d399";
-        let gradeBg = "rgba(16, 185, 129, 0.15)";
-        let gradeBorder = "rgba(16, 185, 129, 0.3)";
+        // CWE counts
+        const cwe = fnData.cwe_summary || {};
+        if (cweCountTotal) cweCountTotal.textContent = `${cwe.total || 0} Total`;
+        if (cweCountCritical) cweCountCritical.textContent = `${cwe.critical || 0} Critical`;
+        if (cweCountHigh) cweCountHigh.textContent = `${cwe.high || 0} High`;
+        if (cweCountMedium) cweCountMedium.textContent = `${cwe.medium || 0} Medium`;
+        if (cweCountLow) cweCountLow.textContent = `${cwe.low || 0} Low`;
 
-        if (rqi.rqi_score < 60) {
-            gradeColor = "#f87171";
-            gradeBg = "rgba(239, 68, 68, 0.15)";
-            gradeBorder = "rgba(239, 68, 68, 0.3)";
-        } else if (rqi.rqi_score < 80) {
-            gradeColor = "#fbbf24";
-            gradeBg = "rgba(245, 158, 11, 0.15)";
-            gradeBorder = "rgba(245, 158, 11, 0.3)";
-        }
-
-        if (rqiGradeLetter) rqiGradeLetter.style.color = gradeColor;
-        if (rqiGradeText) {
-            rqiGradeText.style.color = gradeColor;
-            rqiGradeText.style.backgroundColor = gradeBg;
-            rqiGradeText.style.borderColor = gradeBorder;
-        }
-
-        // 4 Vector Gauges (Formatted without .0)
-        const intSafety = Math.round(rqi.safety_score);
-        const intPerf = Math.round(rqi.performance_score);
-        const intMaint = Math.round(rqi.maintainability_score);
-        const intSec = Math.round(rqi.security_score);
-
-        valSafety.textContent = formatScore(intSafety);
-        if (pathSafety) pathSafety.setAttribute("stroke-dasharray", `${intSafety}, 100`);
-
-        valPerf.textContent = formatScore(intPerf);
-        if (pathPerf) pathPerf.setAttribute("stroke-dasharray", `${intPerf}, 100`);
-
-        valMaint.textContent = formatScore(intMaint);
-        if (pathMaint) pathMaint.setAttribute("stroke-dasharray", `${intMaint}, 100`);
-
-        valSec.textContent = formatScore(intSec);
-        if (pathSec) pathSec.setAttribute("stroke-dasharray", `${intSec}, 100`);
-
-        // Render Developer Mode RQI Analysis Card (No Grade Letter or Label!)
-        if (devRqiScoreNum) devRqiScoreNum.textContent = formatScore(rqi.rqi_score);
-        if (devScoreCirclePath) devScoreCirclePath.setAttribute("stroke-dasharray", `${rqi.rqi_score}, 100`);
-
-        const weightedSumRaw = 0.30 * intSafety + 0.25 * intPerf + 0.25 * intMaint + 0.20 * intSec;
-        if (devCalcWeightedSum) devCalcWeightedSum.textContent = formatScore(weightedSumRaw);
-        if (devCalcPenaltyVal) {
-            devCalcPenaltyVal.textContent = rqi.penalty_applied ? "-1.7 pts (Penalty Triggered)" : "0 pts (No Penalty)";
-            devCalcPenaltyVal.style.color = rqi.penalty_applied ? "#f87171" : "#34d399";
-        }
-
-        // Render 4 Vector Rows Stacked Vertically Below Each Other with Pros & Cons
-        if (devVectorsVerticalList) {
-            devVectorsVerticalList.innerHTML = "";
-            const vectorConfigs = [
-                {
-                    key: "safety",
-                    name: "Safety Vector",
-                    score: intSafety,
-                    icon: "fa-user-shield",
-                    color: "var(--safety-color)",
-                    defaultPros: ["Safe reference abstractions", "Zero raw pointer mutations"]
-                },
-                {
-                    key: "performance",
-                    name: "Performance Vector",
-                    score: intPerf,
-                    icon: "fa-gauge-high",
-                    color: "var(--perf-color)",
-                    defaultPros: ["Pass-by-reference (&T)", "Stack-allocated scope bindings"]
-                },
-                {
-                    key: "maintainability",
-                    name: "Maintainability Vector",
-                    score: intMaint,
-                    icon: "fa-cubes-stacked",
-                    color: "var(--maint-color)",
-                    defaultPros: ["McCabe Cyclomatic Complexity V(G) <= 5", "Idiomatic Rust control flow"]
-                },
-                {
-                    key: "security",
-                    name: "Security Vector",
-                    score: intSec,
-                    icon: "fa-lock",
-                    color: "var(--sec-color)",
-                    defaultPros: ["Memory boundary isolation", "Encapsulated safety contract"]
-                }
-            ];
-
-            vectorConfigs.forEach(vc => {
-                const card = document.createElement("div");
-                card.className = "dev-vector-row-card";
-
-                const consList = rqi.deductions ? (rqi.deductions[vc.key] || []) : [];
-                const structuredCons = (rqi.structured_deductions && rqi.structured_deductions[vc.key]) || [];
-                const prosList = vc.score === 100 ? vc.defaultPros : vc.defaultPros.slice(0, 1);
-
-                let rationaleHtml = `<div class="rationale-group">`;
-                prosList.forEach(p => {
-                    rationaleHtml += `<span class="rationale-tag tag-pro"><i class="fa-solid fa-circle-check"></i> ${p}</span>`;
-                });
-
-                if (structuredCons.length > 0) {
-                    structuredCons.forEach(sc => {
-                        const cweLink = sc.cwe_id ? `<a href="${sc.cwe_url || `https://cwe.mitre.org/data/definitions/${sc.cwe_id.replace('CWE-', '')}.html`}" target="_blank" rel="noopener noreferrer" class="dev-cwe-pill severity-${sc.severity}" title="${escapeHtml(sc.cwe_name || sc.cwe_id)}"><i class="fa-solid fa-arrow-up-right-from-square"></i> ${sc.cwe_id}</a>` : '';
-                        const lineBadge = sc.line_number ? `<span class="dev-line-tag">Line ${sc.line_number}</span>` : '';
-                        rationaleHtml += `
-                            <div class="rationale-tag tag-con severity-${sc.severity}">
-                                <div class="dev-con-main">
-                                    <i class="fa-solid fa-circle-minus"></i>
-                                    ${cweLink}
-                                    ${lineBadge}
-                                    <span class="dev-con-desc">${escapeHtml(sc.description)}</span>
-                                    <span class="dev-con-penalty">(-${formatScore(sc.penalty || 0)} pts)</span>
-                                </div>
-                                ${sc.remediation ? `<div class="dev-con-remediation"><i class="fa-solid fa-wrench"></i> ${escapeHtml(sc.remediation)}</div>` : ''}
-                            </div>
-                        `;
-                    });
-                } else {
-                    consList.forEach(c => {
-                        rationaleHtml += `<span class="rationale-tag tag-con"><i class="fa-solid fa-circle-minus"></i> ${escapeHtml(c)}</span>`;
-                    });
-                }
-                rationaleHtml += `</div>`;
-
-                card.innerHTML = `
-                    <div class="dev-vector-left-meta">
-                        <div class="mini-dial">
-                            <svg viewBox="0 0 36 36" class="mini-chart">
-                                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                                <path class="circle" style="stroke: ${vc.color};" stroke-dasharray="${vc.score}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                                <text x="18" y="20.35" class="mini-percentage">${formatScore(vc.score)}</text>
-                            </svg>
-                        </div>
-                        <div class="v-title-box">
-                            <span class="v-name"><i class="fa-solid ${vc.icon}" style="color: ${vc.color};"></i> ${vc.name}</span>
-                        </div>
-                    </div>
-                    <div class="dev-vector-rationale-right">
-                        ${rationaleHtml}
-                    </div>
-                `;
-                devVectorsVerticalList.appendChild(card);
-            });
-        }
-
-        // Update CWE Weaknesses Summary Bar
-        const cweSummary = fnData.cwe_summary || rqi.cwe_summary || { total: 0, critical: 0, high: 0, medium: 0, low: 0 };
-        if (cweCountTotal) {
-            cweCountTotal.textContent = `${cweSummary.total || 0} Total`;
-            cweCountTotal.className = `cwe-counter-badge total ${cweSummary.total > 0 ? "has-flaws" : ""}`;
-        }
-        if (cweCountCritical) {
-            cweCountCritical.textContent = `${cweSummary.critical || 0} Critical`;
-            cweCountCritical.style.display = (cweSummary.critical > 0) ? "inline-flex" : "none";
-        }
-        if (cweCountHigh) {
-            cweCountHigh.textContent = `${cweSummary.high || 0} High`;
-            cweCountHigh.style.display = (cweSummary.high > 0) ? "inline-flex" : "none";
-        }
-        if (cweCountMedium) {
-            cweCountMedium.textContent = `${cweSummary.medium || 0} Medium`;
-            cweCountMedium.style.display = (cweSummary.medium > 0) ? "inline-flex" : "none";
-        }
-        if (cweCountLow) {
-            cweCountLow.textContent = `${cweSummary.low || 0} Low`;
-            cweCountLow.style.display = (cweSummary.low > 0) ? "inline-flex" : "none";
-        }
-
-        // Quality Deductions & Indicator Logs
-        deductionsList.innerHTML = "";
-        const severityRank = { "CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1 };
-        const structuredList = Object.values(rqi.structured_deductions || {}).flat();
-
-        if (structuredList.length > 0) {
-            structuredList.sort((a, b) => {
-                const diff = (severityRank[b.severity] || 0) - (severityRank[a.severity] || 0);
-                if (diff !== 0) return diff;
-                return (a.line_number || 9999) - (b.line_number || 9999);
-            });
-
-            structuredList.forEach(d => {
-                const li = document.createElement("li");
-                li.className = `deduction-card severity-${d.severity || 'LOW'}`;
-
-                const cwePillHtml = d.cwe_id ? `
-                    <a href="${d.cwe_url || `https://cwe.mitre.org/data/definitions/${d.cwe_id.replace('CWE-', '')}.html`}" 
-                       target="_blank" rel="noopener noreferrer" class="cwe-pill severity-${d.severity}" 
-                       title="View official MITRE definition for ${escapeHtml(d.cwe_name || d.cwe_id)}">
-                        <i class="fa-solid fa-arrow-up-right-from-square"></i> ${d.cwe_id}
-                    </a>
-                ` : '';
-
-                const lineTagHtml = d.line_number ? `
-                    <span class="cwe-line-tag" title="Exact Statement Location"><i class="fa-solid fa-crosshairs"></i> Line ${d.line_number}</span>
-                ` : '';
-
-                const severityTagHtml = d.severity ? `
-                    <span class="cwe-severity-tag severity-${d.severity}">${d.severity}</span>
-                ` : '';
-
-                const vectorTagHtml = d.vector ? `
-                    <span class="cwe-vector-tag vector-${d.vector}"><i class="fa-solid fa-layer-group"></i> ${d.vector.toUpperCase()}</span>
-                ` : '';
-
-                const penaltyHtml = `<span class="deduction-penalty">-${formatScore(d.penalty || 0)} pts</span>`;
-
-                const codeHtml = d.statement_code ? `
-                    <div class="cwe-code-snippet"><code>${escapeHtml(d.statement_code)}</code></div>
-                ` : '';
-
-                li.innerHTML = `
-                    <div class="deduction-card-header">
-                        <div class="deduction-badges-left">
-                            ${cwePillHtml}
-                            ${lineTagHtml}
-                            ${severityTagHtml}
-                            ${vectorTagHtml}
-                        </div>
-                        ${penaltyHtml}
-                    </div>
-                    <div class="deduction-desc">${escapeHtml(d.description)}</div>
-                    ${codeHtml}
-                `;
-                deductionsList.appendChild(li);
-            });
-        } else {
-            const rawDeductions = Object.values(rqi.deductions || {}).flat();
-            if (rawDeductions.length === 0) {
-                const li = document.createElement("li");
-                li.className = "deduction-clean-state";
-                li.innerHTML = `<i class="fa-solid fa-circle-check"></i> No quality deductions or CWE flaws detected. Subroutine is idiomatic and clean!`;
-                deductionsList.appendChild(li);
+        // Deductions list
+        if (deductionsList) {
+            deductionsList.innerHTML = "";
+            const structured = (rqi.structured_deductions_list || []);
+            if (structured.length === 0) {
+                deductionsList.innerHTML = "<li>No quality deductions. Code is optimal!</li>";
             } else {
-                rawDeductions.forEach(d => {
+                structured.forEach(d => {
                     const li = document.createElement("li");
-                    li.className = "deduction-card severity-LOW";
-                    li.innerHTML = `<div class="deduction-desc">${escapeHtml(d)}</div>`;
+                    li.textContent = `[${d.vector.toUpperCase()}] [${d.cwe_id || 'N/A'}] Line ${d.line_number || '-'}: ${d.message} (-${d.penalty} pts)`;
                     deductionsList.appendChild(li);
                 });
             }
         }
 
-        // CPG Metrics
-        astNodesCnt.textContent = fnData.cpg_summary.ast_nodes;
-        cfgCcCnt.textContent = fnData.cpg_summary.cyclomatic_complexity;
-        flogAllocCnt.textContent = fnData.cpg_summary.allocations;
-        flogClonesCnt.textContent = fnData.cpg_summary.clones;
-        if (cpgEdgesCnt) cpgEdgesCnt.textContent = fnData.cpg_summary.cpg_edges;
-
-        // Developer Mode Visibility Render
-        if (devModeToggle.checked) {
-            if (nonDevRqiCard) nonDevRqiCard.classList.add("hidden");
-            if (nonDevDeductionsBox) nonDevDeductionsBox.classList.add("hidden");
-            if (devRqiCard) devRqiCard.classList.remove("hidden");
-            devGraphContainer.classList.remove("hidden");
-            xaiSection.classList.add("hidden");
-            renderGraphCanvas();
-        } else {
-            if (nonDevRqiCard) nonDevRqiCard.classList.remove("hidden");
-            if (nonDevDeductionsBox) nonDevDeductionsBox.classList.remove("hidden");
-            if (devRqiCard) devRqiCard.classList.add("hidden");
-            devGraphContainer.classList.add("hidden");
-            if (fnData.xai_report) {
-                xaiSection.classList.remove("hidden");
-                if (fnData.xai_report.error) {
-                    xaiExplanationText.innerHTML = `<span style="color: #f87171;"><i class="fa-solid fa-triangle-exclamation"></i> ${fnData.xai_report.error}</span>`;
-                    xaiPatchCode.textContent = "// Error generating XAI refactoring patch";
-                    if (copyPatchBtn) copyPatchBtn.style.display = "none";
-                } else {
-                    renderXAIExplanation(fnData.xai_report.explanation, xaiExplanationText);
-                    if (fnData.rqi && fnData.rqi.rqi_score >= 100.0 && !fnData.xai_report.refactored_code) {
-                        xaiPatchCode.textContent = "// Optimal Subroutine (RQI 100 / 100). No refactoring required.";
-                        if (copyPatchBtn) copyPatchBtn.style.display = "none";
-                    } else {
-                        xaiPatchCode.textContent = fnData.xai_report.refactored_code || "// No refactored patch required";
-                        if (copyPatchBtn) {
-                            copyPatchBtn.style.display = fnData.xai_report.refactored_code ? "inline-flex" : "none";
-                        }
-                    }
-                }
-            } else {
-                xaiSection.classList.add("hidden");
-            }
+        // Developer mode formula
+        if (devCalcWeightedSum) {
+            const sum = 0.3 * (rqi.safety_score || 0) + 0.25 * (rqi.performance_score || 0) + 0.25 * (rqi.maintainability_score || 0) + 0.2 * (rqi.security_score || 0);
+            devCalcWeightedSum.textContent = sum.toFixed(1);
         }
+        if (devCalcPenaltyVal) {
+            devCalcPenaltyVal.textContent = rqi.penalty_applied ? rqi.penalty_reasons.join("; ") : "None";
+        }
+
+        // Graph stats
+        const cpgSum = fnData.cpg_summary || {};
+        if (astNodesCnt) astNodesCnt.textContent = cpgSum.ast_nodes || 0;
+        if (cfgCcCnt) cfgCcCnt.textContent = cpgSum.cyclomatic_complexity || 1;
+        if (flogAllocCnt) flogAllocCnt.textContent = cpgSum.allocations || 0;
+        if (flogClonesCnt) flogClonesCnt.textContent = cpgSum.clones || 0;
+        if (cpgEdgesCnt) cpgEdgesCnt.textContent = cpgSum.cpg_edges || 0;
+
+        // XAI Section
+        if (fnData.xai_report && xaiSection) {
+            xaiSection.style.display = "block";
+            if (xaiExplanationText) xaiExplanationText.textContent = fnData.xai_report.explanation || "";
+            if (xaiPatchCode) xaiPatchCode.textContent = fnData.xai_report.refactored_code || "// No refactored patch required";
+        }
+
+        // Revisions badge
+        if (revCountBadge) {
+            revCountBadge.textContent = fnData.total_revisions || (fnData.revisions ? fnData.revisions.length : 0);
+        }
+
+        updateModeVisibility();
     }
 
+    // Toggle Dev Mode
+    function updateModeVisibility() {
+        const isDev = devModeToggle && devModeToggle.checked;
+        if (devRqiCard) devRqiCard.style.display = isDev ? "block" : "none";
+        if (devGraphContainer) devGraphContainer.style.display = isDev ? "block" : "none";
+        if (isDev) renderGraph();
+    }
 
-    function renderGraphCanvas() {
-        if (!currentAnalysisData || !currentAnalysisData.functions[activeFnIndex]) return;
+    if (devModeToggle) {
+        devModeToggle.addEventListener("change", updateModeVisibility);
+    }
 
+    // Graph Tabs
+    document.querySelectorAll(".graph-type-btn").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            activeGraphType = e.target.getAttribute("data-graph") || "flog";
+            renderGraph();
+        });
+    });
+
+    // Render Vis.js Graph
+    function renderGraph() {
+        if (!currentAnalysisData || !currentAnalysisData.functions[activeFnIndex] || !interactiveCanvas) return;
         const fnData = currentAnalysisData.functions[activeFnIndex];
-        const rawNodes = fnData.nodes[activeGraphType] || [];
-        const rawEdges = fnData.edges[activeGraphType] || [];
+        const rawNodes = (fnData.nodes && fnData.nodes[activeGraphType]) || [];
+        const rawEdges = (fnData.edges && fnData.edges[activeGraphType]) || [];
 
-        // Build Vis-Network Nodes
-        const nodes = rawNodes.map(n => {
-            let label = n.label || n.var_name || n.name || n.kind || n.node_type || n.id;
-            let color = "#6366f1"; // Default indigo
-            let shape = "box";
+        const nodes = rawNodes.map(n => ({
+            id: n.id,
+            label: n.label || n.var_name || n.name || n.kind || n.node_type || n.id,
+            shape: "box",
+        }));
 
-            if (activeGraphType === "cpg") {
-                // Unified CPG Multi-Layer Semantic Coloring
-                if (n.layer === "AST") {
-                    color = "#06b6d4"; // Cyan for AST syntax
-                } else if (n.layer === "CFG") {
-                    color = n.is_decision ? "#f59e0b" : "#3b82f6"; // Amber for decision, Blue for control flow
-                } else if (n.layer === "FLOG") {
-                    if (n.is_unsafe || n.node_type === "UnsafeOperation") color = "#dc2626"; // Crimson
-                    else if (n.is_clone || n.node_type === "ClonedBinding") color = "#ef4444"; // Red
-                    else if (n.is_heap_alloc || n.node_type === "HeapAllocation") color = "#a855f7"; // Purple
-                    else color = "#10b981"; // Emerald for normal bindings
-                }
-            } else {
-                if (n.node_type === "FunctionDecl" || n.node_type === "ENTRY" || n.node_type === "FnScope") color = "#06b6d4";
-                if (n.node_type === "DecisionBlock" || n.is_decision) color = "#f59e0b";
-                if (n.node_type === "HeapAllocation" || n.is_heap_alloc) color = "#a855f7";
-                if (n.node_type === "ClonedBinding" || n.is_clone) color = "#ef4444";
-                if (n.node_type === "UnsafeOperation" || n.is_unsafe) color = "#dc2626";
-            }
+        const edges = rawEdges.map(e => ({
+            from: e.source,
+            to: e.target,
+            label: e.label || e.edge_type || "",
+            arrows: "to",
+        }));
 
-            return {
-                id: n.id,
-                label: label,
-                color: { background: color, border: "#ffffff", highlight: { background: "#ffffff", border: color } },
-                font: { color: "#ffffff", face: "Fira Code" },
-                shape: shape,
-                margin: 10,
-            };
-        });
-
-        // Build Vis-Network Edges
-        const edges = rawEdges.map(e => {
-            let isCrossLayer = e.edge_type && (
-                e.edge_type.includes("AST_TO_CFG") ||
-                e.edge_type.includes("AST_TO_FLOG") ||
-                e.edge_type.includes("CFG_TO_FLOG")
-            );
-
-            return {
-                from: e.source,
-                to: e.target,
-                label: e.label || e.edge_type || "",
-                font: { color: isCrossLayer ? "#c084fc" : "#94a3b8", size: isCrossLayer ? 11 : 9 },
-                arrows: "to",
-                dashes: isCrossLayer,
-                width: isCrossLayer ? 2 : 1,
-                color: { color: isCrossLayer ? "#818cf8" : "#334155" },
-            };
-        });
-
-        const container = interactiveCanvas;
         const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
         const options = {
             physics: {
                 solver: "forceAtlas2Based",
-                stabilization: { iterations: 120 },
-                forceAtlas2Based: {
-                    gravitationalConstant: -40,
-                    centralGravity: 0.01,
-                    springLength: 100,
-                    springConstant: 0.08
-                }
-            },
-            interaction: { hover: true, zoomView: true, dragView: true },
+                stabilization: { iterations: 80 }
+            }
         };
 
         if (networkInstance) networkInstance.destroy();
-        networkInstance = new vis.Network(container, data, options);
+        networkInstance = new vis.Network(interactiveCanvas, data, options);
 
-        // Render Graph Outliers for active graph type
-        if (activeGraphType === "cpg") {
-            const allOutliers = [
-                ...(fnData.graph_outliers.ast || []),
-                ...(fnData.graph_outliers.cfg || []),
-                ...(fnData.graph_outliers.flog || []),
-            ];
-            renderOutliers(allOutliers);
-        } else {
-            renderOutliers(fnData.graph_outliers[activeGraphType] || []);
+        // Outliers
+        if (outliersContentList) {
+            outliersContentList.innerHTML = "";
+            const outliers = (fnData.graph_outliers && fnData.graph_outliers[activeGraphType]) || [];
+            if (outliers.length === 0) {
+                outliersContentList.innerHTML = "<p>No topological anomalies detected.</p>";
+            } else {
+                outliers.forEach(o => {
+                    const div = document.createElement("div");
+                    div.innerHTML = `<strong>[${o.severity}] ${o.title}</strong> (${o.cwe_id || ''})<p>${o.description}</p>`;
+                    outliersContentList.appendChild(div);
+                });
+            }
         }
     }
 
-    function renderOutliers(outliersList) {
-        outliersContentList.innerHTML = "";
-        if (!outliersList || outliersList.length === 0) {
-            outliersContentList.innerHTML = `<p style="font-size:0.8rem; color:#34d399;"><i class="fa-solid fa-circle-check"></i> No anomalies or topological outliers detected in ${activeGraphType.toUpperCase()} graph model.</p>`;
-            return;
-        }
+    // Copy Patch
+    if (copyPatchBtn && xaiPatchCode) {
+        copyPatchBtn.addEventListener("click", () => {
+            navigator.clipboard.writeText(xaiPatchCode.textContent).then(() => {
+                alert("Patch copied to clipboard!");
+            });
+        });
+    }
 
-        outliersList.forEach(item => {
-            const card = document.createElement("div");
-            card.className = `outlier-card-item severity-${item.severity}`;
+    // Apply Patch
+    if (applyPatchBtn && xaiPatchCode) {
+        applyPatchBtn.addEventListener("click", async () => {
+            const textToApply = xaiPatchCode.textContent;
+            if (!textToApply || textToApply.startsWith("// No")) {
+                alert("No patch to apply.");
+                return;
+            }
+            if (!currentAnalysisData || !currentAnalysisData.functions[activeFnIndex]) return;
+            const activeFn = currentAnalysisData.functions[activeFnIndex];
 
-            const cweHtml = item.cwe_id ? `
-                <a href="${item.cwe_url || `https://cwe.mitre.org/data/definitions/${item.cwe_id.replace('CWE-','')}.html`}" 
-                   target="_blank" rel="noopener noreferrer" class="cwe-pill severity-${item.severity}" 
-                   title="${escapeHtml(item.cwe_name || item.cwe_id)}">
-                    <i class="fa-solid fa-arrow-up-right-from-square"></i> ${item.cwe_id}
-                </a>
-            ` : '';
+            try {
+                const res = await fetch("/api/revisions/commit", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        function_name: activeFn.name,
+                        source_code: textToApply,
+                        change_type: "PATCH_APPLIED",
+                        patch_summary: "Applied Idiomatic Rust Refactoring Patch",
+                    }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                    if (codeEditor) codeEditor.value = textToApply;
+                    alert("Patch applied! Re-analyzing...");
+                    if (analyzeBtn) analyzeBtn.click();
+                }
+            } catch (err) {
+                alert("Failed to commit revision: " + err.message);
+            }
+        });
+    }
 
-            const lineHtml = item.line_number ? `
-                <span class="cwe-line-tag"><i class="fa-solid fa-crosshairs"></i> Line ${item.line_number}</span>
-            ` : '';
+    // Revisions Drawer Toggle
+    if (revisionsToggleBtn) {
+        revisionsToggleBtn.addEventListener("click", async () => {
+            if (!currentAnalysisData || !currentAnalysisData.functions[activeFnIndex]) {
+                alert("Please analyze code first.");
+                return;
+            }
+            const fnName = currentAnalysisData.functions[activeFnIndex].name;
+            if (drawerFnSubtitle) drawerFnSubtitle.textContent = `Subroutine: fn ${fnName}()`;
 
-            const codeHtml = item.statement_code ? `
-                <div class="cwe-code-snippet"><code>${escapeHtml(item.statement_code)}</code></div>
-            ` : '';
+            try {
+                const res = await fetch(`/api/revisions?function=${encodeURIComponent(fnName)}`);
+                const data = await res.json();
+                if (data.success && revisionsTimelineContainer) {
+                    revisionsTimelineContainer.innerHTML = "";
+                    const revs = data.revisions || [];
+                    if (revs.length === 0 && revisionsEmptyState) {
+                        revisionsEmptyState.style.display = "block";
+                    } else {
+                        if (revisionsEmptyState) revisionsEmptyState.style.display = "none";
+                        revs.forEach(r => {
+                            const card = document.createElement("div");
+                            card.style.border = "1px solid #ccc";
+                            card.style.padding = "8px";
+                            card.style.margin = "8px 0";
+                            card.innerHTML = `
+                                <p><strong>Rev #${r.revision_number}</strong> (${r.change_type}) - RQI: ${r.rqi_score.toFixed(1)} [${r.grade}]</p>
+                                <p><small>${r.timestamp_display}</small></p>
+                                <p>${r.patch_summary}</p>
+                                <button type="button" class="rb-btn" data-id="${r.revision_id}">Rollback to this</button>
+                            `;
+                            card.querySelector(".rb-btn").addEventListener("click", async () => {
+                                const rbRes = await fetch("/api/revisions/rollback", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ revision_id: r.revision_id }),
+                                });
+                                const rbData = await rbRes.json();
+                                if (rbData.success) {
+                                    if (codeEditor) codeEditor.value = rbData.source_code;
+                                    if (revisionHistoryDrawer) revisionHistoryDrawer.style.display = "none";
+                                    alert("Rolled back! Re-analyzing...");
+                                    if (analyzeBtn) analyzeBtn.click();
+                                }
+                            });
+                            revisionsTimelineContainer.appendChild(card);
+                        });
+                    }
+                }
+            } catch (e) {
+                alert("Failed to load revisions: " + e.message);
+            }
 
-            const remediationHtml = item.remediation ? `
-                <div class="cwe-remediation">
-                    <i class="fa-solid fa-screwdriver-wrench"></i> <strong>Remediation:</strong> ${escapeHtml(item.remediation)}
-                </div>
-            ` : '';
+            if (revisionHistoryDrawer) revisionHistoryDrawer.style.display = "block";
+        });
+    }
 
-            card.innerHTML = `
-                <div class="outlier-card-header">
-                    <div class="outlier-left">
-                        <h5>${escapeHtml(item.title)}</h5>
-                        <div class="outlier-badges">
-                            ${cweHtml}
-                            ${lineHtml}
-                        </div>
-                    </div>
-                    <span class="severity-badge severity-${item.severity}">[${item.severity}]</span>
-                </div>
-                <p>${escapeHtml(item.description)}</p>
-                ${codeHtml}
-                ${remediationHtml}
-            `;
-            outliersContentList.appendChild(card);
+    if (closeDrawerBtn && revisionHistoryDrawer) {
+        closeDrawerBtn.addEventListener("click", () => {
+            revisionHistoryDrawer.style.display = "none";
+        });
+    }
+
+    if (clearRevisionsBtn) {
+        clearRevisionsBtn.addEventListener("click", async () => {
+            if (!currentAnalysisData || !currentAnalysisData.functions[activeFnIndex]) return;
+            const fnName = currentAnalysisData.functions[activeFnIndex].name;
+            await fetch(`/api/revisions?function=${encodeURIComponent(fnName)}`, { method: "DELETE" });
+            alert("Revisions cleared.");
+            if (revisionHistoryDrawer) revisionHistoryDrawer.style.display = "none";
+            if (revCountBadge) revCountBadge.textContent = "0";
+        });
+    }
+
+    // Export PDF
+    if (exportPdfBtn) {
+        exportPdfBtn.addEventListener("click", async () => {
+            if (!currentAnalysisData || !currentAnalysisData.functions[activeFnIndex]) {
+                alert("No audit data available to export.");
+                return;
+            }
+            try {
+                const res = await fetch("/api/export/pdf", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        function_data: currentAnalysisData.functions[activeFnIndex],
+                        filename: "subroutine_audit.rs",
+                    }),
+                });
+                if (!res.ok) throw new Error("Export failed with status " + res.status);
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `rustaudit_report_${currentAnalysisData.functions[activeFnIndex].name}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 200);
+            } catch (err) {
+                alert("PDF export failed: " + err.message);
+            }
         });
     }
 });
-

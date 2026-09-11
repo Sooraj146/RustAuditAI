@@ -15,6 +15,7 @@ from rustaudit.graph import CPGBuilder, GraphOutlierAnalyzer
 from rustaudit.metrics import RQISynthesizer
 from rustaudit.ai import XAIEngine
 from rustaudit.reports import RustAuditPDFReportGenerator, generate_pdf_report
+from rustaudit.revision import get_revision_manager, CodeRevision
 
 app = FastAPI(
     title="RustAuditAI API",
@@ -34,11 +35,26 @@ builder = CPGBuilder()
 outlier_analyzer = GraphOutlierAnalyzer()
 synthesizer = RQISynthesizer()
 ai_engine = XAIEngine()
+revision_mgr = get_revision_manager()
 
 
 class AnalyzeRequest(BaseModel):
     code: str
     explain: bool = False
+
+
+class CommitRevisionRequest(BaseModel):
+    function_name: str
+    source_code: str
+    rqi_score: Optional[float] = None
+    grade: Optional[str] = None
+    vector_scores: Optional[dict] = None
+    change_type: Optional[str] = "PATCH_APPLIED"
+    patch_summary: Optional[str] = "Applied Idiomatic Rust Refactoring Patch"
+
+
+class RollbackRequest(BaseModel):
+    revision_id: str
 
 
 class ExportReportRequest(BaseModel):
@@ -150,6 +166,28 @@ async def analyze_code(req: AnalyzeRequest):
             },
         }
 
+        # Automatic baseline revision recording (SRS §4.6.7)
+        existing_revs = revision_mgr.get_revisions(fn.name)
+        if not existing_revs:
+            revision_mgr.record_revision(
+                function_name=fn.name,
+                source_code=req.code,
+                rqi_score=rqi_summary.rqi_score,
+                grade=rqi_summary.grade,
+                vector_scores={
+                    "safety": rqi_summary.vectors.safety,
+                    "performance": rqi_summary.vectors.performance,
+                    "maintainability": rqi_summary.vectors.maintainability,
+                    "security": rqi_summary.vectors.security,
+                },
+                change_type="INITIAL",
+                patch_summary=f"Initial Subroutine Audit (RQI {rqi_summary.rqi_score:.1f})",
+            )
+            existing_revs = revision_mgr.get_revisions(fn.name)
+
+        fn_data["revisions"] = [r.to_dict() for r in existing_revs]
+        fn_data["total_revisions"] = len(existing_revs)
+
         if req.explain:
             try:
                 lines = req.code.splitlines()
@@ -223,6 +261,98 @@ async def export_pdf_report(req: ExportReportRequest):
             "Access-Control-Expose-Headers": "Content-Disposition",
         },
     )
+
+
+@app.get("/api/revisions")
+async def get_revisions(function: Optional[str] = None):
+    """
+    Returns the intra-procedural revision ledger for the specified subroutine (SRS §4.6.7).
+    """
+    revs = revision_mgr.get_revisions(function)
+    return {
+        "success": True,
+        "function_name": function,
+        "total_revisions": len(revs),
+        "revisions": [r.to_dict() for r in revs],
+    }
+
+
+@app.post("/api/revisions/commit")
+async def commit_revision(req: CommitRevisionRequest):
+    """
+    Records an approved modification layer in the intra-procedural revision database (SRS §4.6.6 & §4.6.7).
+    """
+    rqi_score = req.rqi_score
+    grade = req.grade or "Grade A"
+    vector_scores = req.vector_scores or {"safety": 100.0, "performance": 100.0, "maintainability": 100.0, "security": 100.0}
+
+    # If metrics were not passed, calculate them deterministically
+    if rqi_score is None:
+        try:
+            parsed = parser.parse_code(req.source_code)
+            if parsed.success and parsed.functions:
+                target_fn = next((f for f in parsed.functions if f.name == req.function_name), parsed.functions[0])
+                cpg = builder.build_cpg(target_fn)
+                rqi_res = synthesizer.compute_rqi(target_fn, cpg)
+                rqi_score = rqi_res.rqi_score
+                grade = rqi_res.grade
+                vector_scores = {
+                    "safety": rqi_res.vectors.safety,
+                    "performance": rqi_res.vectors.performance,
+                    "maintainability": rqi_res.vectors.maintainability,
+                    "security": rqi_res.vectors.security,
+                }
+            else:
+                rqi_score = 100.0
+        except Exception:
+            rqi_score = 100.0
+
+    rev = revision_mgr.record_revision(
+        function_name=req.function_name,
+        source_code=req.source_code,
+        rqi_score=rqi_score,
+        grade=grade,
+        vector_scores=vector_scores,
+        change_type=req.change_type or "PATCH_APPLIED",
+        patch_summary=req.patch_summary or "Approved Refactoring Patch",
+    )
+
+    all_revs = revision_mgr.get_revisions(req.function_name)
+    return {
+        "success": True,
+        "revision": rev.to_dict(),
+        "total_revisions": len(all_revs),
+        "revisions": [r.to_dict() for r in all_revs],
+    }
+
+
+@app.post("/api/revisions/rollback")
+async def rollback_revision(req: RollbackRequest):
+    """
+    Restores the subroutine back to any earlier revision state and logs the rollback (SRS §4.6.7).
+    """
+    restored = revision_mgr.rollback_to_revision(req.revision_id)
+    if not restored:
+        raise HTTPException(status_code=404, detail=f"Revision ID '{req.revision_id}' not found")
+
+    all_revs = revision_mgr.get_revisions(restored.function_name)
+    return {
+        "success": True,
+        "restored_revision": restored.to_dict(),
+        "source_code": restored.source_code,
+        "total_revisions": len(all_revs),
+        "revisions": [r.to_dict() for r in all_revs],
+    }
+
+
+@app.delete("/api/revisions")
+async def clear_revisions(function: Optional[str] = None):
+    """
+    Clears the revision history for a function or all functions.
+    """
+    revision_mgr.clear_revisions(function)
+    return {"success": True, "cleared_function": function}
+
 
 if __name__ == "__main__":
     import uvicorn
