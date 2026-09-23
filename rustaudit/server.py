@@ -30,6 +30,15 @@ TEMPLATES_DIR = BASE_DIR / "web" / "templates"
 # Mount static files
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
+@app.middleware("http")
+async def add_no_cache_headers(request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/static/") or request.url.path == "/":
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 parser = RustParser()
 builder = CPGBuilder()
 outlier_analyzer = GraphOutlierAnalyzer()
@@ -247,9 +256,16 @@ async def export_pdf_report(req: ExportReportRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate PDF report: {str(e)}")
 
-    fn_name = "subroutine"
-    if isinstance(data, dict):
-        fn_name = data.get("name", "subroutine")
+    fn_name = "complete_audit"
+    if isinstance(data, dict) and data.get("name"):
+        fn_name = data["name"]
+    elif req.filename:
+        from pathlib import Path
+        fn_name = Path(req.filename).stem
+    elif isinstance(data, dict) and data.get("filename"):
+        from pathlib import Path
+        fn_name = Path(data["filename"]).stem
+
     clean_fn_name = "".join(c for c in str(fn_name) if c.isalnum() or c in ("-", "_")) or "subroutine"
     download_filename = f"rustaudit_report_{clean_fn_name}.pdf"
 

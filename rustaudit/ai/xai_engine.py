@@ -160,13 +160,13 @@ class XAIEngine:
         if fn_info.name == "process_user_data":
             explanation = (
                 "The original implementation of `process_user_data` triggered multiple quality and security deductions across several vectors:\n\n"
-                "1. **Unnecessary `unsafe` Block & Raw Pointer Dereferencing ([CWE-119])**:\n"
+                "1. **UNNECESSARY UNSAFE BLOCK & RAW POINTER DEREFERENCING**:\n"
                 "   - **Root Cause**: The function wraps `data.as_ptr()` inside an `unsafe { ... }` block to print the address. In Rust, obtaining a raw pointer with `.as_ptr()` is safe, but marking the region `unsafe` unnecessarily expands the defensive security boundary and violates the principle of least privilege.\n"
                 "   - **Remediation**: Remove the `unsafe` block entirely and rely on safe pointer formatting using standard library traits (`println!(\"Raw pointer address: {:p}\", data)`).\n\n"
-                "2. **Redundant Memory Duplications & Deep Clones ([CWE-400])**:\n"
+                "2. **REDUNDANT MEMORY DUPLICATIONS & DEEP CLONES**:\n"
                 "   - **Root Cause**: `let duplicate = result.clone()` eagerly duplicates the entire heap buffer before the branch condition is checked. If `data.len() > 10`, the initial `result` allocation is completely wasted.\n"
                 "   - **Remediation**: Avoid unnecessary deep memory duplicates (`.clone()`); pass values by reference (`&T`, `&str`) to minimize memory bandwidth overhead and defer allocations to the branches where needed.\n\n"
-                "3. **Unnecessary Micro-Heap Allocation ([CWE-400])**:\n"
+                "3. **UNNECESSARY MICRO-HEAP ALLOCATION**:\n"
                 "   - **Root Cause**: `Box::new(duplicate)` allocates a micro-heap box solely to pass to `format!`, creating redundant heap churn and pointer indirection.\n"
                 "   - **Remediation**: Eliminate the `Box::new` allocation and pass the string slice directly to `format!`."
             )
@@ -175,12 +175,11 @@ class XAIEngine:
             cwe_tags = rqi_summary.get_cwe_tags()
             items = []
             for i, tag in enumerate(cwe_tags, 1):
-                cwe_id = tag.get("cwe_id", "CWE-710")
-                name = tag.get("name", "Quality Defect")
+                name = tag.get("name", "Quality Defect").upper()
                 desc = tag.get("message", "Quality deduction identified in graph traversal.")
                 rem = tag.get("remediation", "Refactor to idiomatic Rust abstractions.")
                 items.append(
-                    f"{i}. **{name} ([{cwe_id}])**:\n"
+                    f"{i}. **{name}**:\n"
                     f"   - **Root Cause**: {desc}\n"
                     f"   - **Remediation**: {rem}"
                 )
@@ -196,18 +195,93 @@ class XAIEngine:
 
         return XAIReport(
             function_name=fn_info.name,
-            explanation=explanation,
+            explanation=self._clean_explanation(explanation),
             refactored_code=refactored_code,
             diff_text=diff_text,
             metrics_summary=metrics_summary,
             raw_response="Synthesized via deterministic graph-grounded fallback.",
         )
 
+    def _clean_explanation(self, raw_text: str) -> str:
+        """
+        Formats XAI architectural insights into a clean, presentable format:
+        - Uppercase defect titles without redundant 'Defect Title' wrappers
+        - Defect titles followed cleanly by Root Cause and Remediation
+        - Removes CWE IDs exclusively from XAI architectural insights text
+        - Eliminates fragmented colons and dashes
+        """
+        if not raw_text:
+            return ""
+
+        # 1. Strip CWE IDs and phrases only from this XAI explanation text
+        s = re.sub(r'(?:and\s+triggers\s+|triggers\s+|associated\s+with\s+|classified\s+as\s+|via\s+)?\[?\s*\(?\s*CWE[-\u2010-\u2015]?\d+\s*\)?\s*\]?', '', raw_text, flags=re.IGNORECASE)
+        s = re.sub(r'\(?\s*\[?\s*CWE[-\u2010-\u2015]?\d+\s*\]?\s*\)?', '', s, flags=re.IGNORECASE)
+        s = re.sub(r'\bCWE[-\u2010-\u2015]?\d+\b', '', s, flags=re.IGNORECASE)
+        s = re.sub(r'CWE[-\u2010-\u2015]?\d+', '', s, flags=re.IGNORECASE)
+        s = re.sub(r'\(\s*\)', '', s)
+        s = re.sub(r'\[\s*\]', '', s)
+        s = re.sub(r'\s+([.,;:!?])', r'\1', s)
+
+        # 2. Split into numbered blocks or lines
+        blocks = re.split(r'(?m)(?=^\d+\.\s*)', s.strip())
+        out_blocks = []
+
+        for b in blocks:
+            b = b.strip()
+            if not b:
+                continue
+            num_m = re.match(r'^(\d+)\.\s*(.*)', b, re.DOTALL)
+            if not num_m:
+                # Introductory text or general paragraph
+                out_blocks.append(b)
+                continue
+
+            num = num_m.group(1)
+            rest = num_m.group(2).strip()
+
+            rc_m = re.search(r'(?:[-*#\s]*Root\s*Cause[:\s]*)(.*)', rest, re.DOTALL | re.IGNORECASE)
+            if rc_m:
+                title_part = rest[:rc_m.start()].strip()
+                body_part = rest[rc_m.start():].strip()
+            else:
+                lines = rest.split('\n', 1)
+                title_part = lines[0].strip()
+                body_part = lines[1].strip() if len(lines) > 1 else ''
+
+            # Clean and uppercase title
+            title_clean = re.sub(r'Defect\s+Title\s*[:(]?\s*', '', title_part, flags=re.IGNORECASE)
+            title_clean = re.sub(r'^[(\[\s*:]+|[)\]\s*:]+$', '', title_clean).strip()
+            title_clean = re.sub(r'^[(\[\s*:]+|[)\]\s*:]+$', '', title_clean).strip()
+            title_clean = re.sub(r'\s+', ' ', title_clean).upper()
+
+            # Separate Root Cause and Remediation
+            rem_m = re.search(r'(?:[-*#\s]*Remediation[:\s]*)(.*)', body_part, re.DOTALL | re.IGNORECASE)
+            if rem_m:
+                rc_text = body_part[:rem_m.start()].strip()
+                rem_text = rem_m.group(1).strip()
+            else:
+                rc_text = body_part.strip()
+                rem_text = ''
+
+            # Clean prefixes/suffixes
+            rc_text = re.sub(r'^(?:[-*#\s]*Root\s*Cause[:\s\-*]*)', '', rc_text, flags=re.IGNORECASE).strip()
+            rc_text = re.sub(r'^[*:\s\-]+', '', rc_text).strip()
+            rc_text = re.sub(r'[-:\s*]+$', '', rc_text).strip()
+            rem_text = re.sub(r'^(?:[-*#\s]*Remediation[:\s\-*]*)', '', rem_text, flags=re.IGNORECASE).strip()
+            rem_text = re.sub(r'^[*:\s\-]+', '', rem_text).strip()
+            rem_text = re.sub(r'[-:\s*]+$', '', rem_text).strip()
+
+            formatted_b = f"{num}. **{title_clean}**:\n   - **Root Cause**: {rc_text}"
+            if rem_text:
+                formatted_b += f"\n   - **Remediation**: {rem_text}"
+            out_blocks.append(formatted_b)
+
+        return "\n\n".join(out_blocks)
+
     def _extract_explanation(self, response_text: str) -> str:
         match = re.search(r'#{1,4}\s*(?:1\.\s*)?Root Cause Explanation\s*\n+(.*?)(?=\n#{1,4}\s|\Z)', response_text, re.DOTALL | re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-        return response_text[:500].strip()
+        raw_exp = match.group(1).strip() if match else response_text[:500].strip()
+        return self._clean_explanation(raw_exp)
 
     def _extract_metrics(self, response_text: str, rqi_summary: Optional[RQISummary] = None) -> str:
         # Flexible matching for Section 3 headers (markdown headings, bold labels, numbered lists)

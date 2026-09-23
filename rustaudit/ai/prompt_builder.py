@@ -91,7 +91,7 @@ class XAIPromptBuilder:
             "Please structure your response into the following 3 markdown sections:\n\n"
             "### 1. Root Cause Explanation\n"
             "Provide a short overview sentence, followed by numbered items for each deduction in this format:\n"
-            "1. **Defect Title ([CWE-ID if applicable])**:\n"
+            "1. **UPPERCASE DEFECT TITLE** (Do NOT include any CWE ID, and do NOT write 'Defect Title'):\n"
             "   - **Root Cause**: Specific explanation of the flaw, AST/FLOG graph invariant, or unsafe hazard.\n"
             "   - **Remediation**: Exact steps to fix it idiomatic to Rust.\n\n"
             "### 2. Proposed Idiomatic Refactored Patch\n"
