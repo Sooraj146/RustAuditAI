@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>RustAuditAI | Semantic Graph Quality Intelligence Dashboard</title>
     
     <!-- Google Fonts: Outfit, Space Grotesk, Inter, JetBrains Mono, Fira Code -->
@@ -20,33 +23,36 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 
+    <!-- Three.js for React Bits MagicRings Component -->
+    <script src="/static/js/three.min.js"></script>
+
     <!-- GSAP for React Bits TextType Component -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 
-    <!-- React Bits Component Stylesheet & Script (TextType) -->
+    <!-- React Bits Component Stylesheets & Scripts -->
     <link rel="stylesheet" href="/static/css/TextType.css">
     <script src="/static/js/TextType.js"></script>
+    <link rel="stylesheet" href="/static/css/MagicRings.css">
+    <script src="/static/js/MagicRings.js"></script>
 
     <!-- Design System Stylesheet -->
-    <link rel="stylesheet" href="/static/css/style.css?v=2.0_rebuild">
+    <link rel="stylesheet" href="/static/css/style.css?v=3.4_magic_rings">
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/static/favicon.png">
 </head>
 <body>
     <!-- ============================================================ -->
-    <!-- Focused Cybernetic Splash Screen (Logo + TextType Animations) -->
+    <!-- Initial Loading Page: React Bits MagicRings + Logo + TextType-->
     <!-- ============================================================ -->
     <div id="splash-screen" class="splash-screen-overlay" title="Click to enter console">
         <div class="splash-cyber-grid"></div>
         
         <div class="splash-content-wrap">
-            <!-- 1. Rotating Holographic Cyber Orbital Emblem -->
-            <div class="splash-emblem-wrap" id="splash-emblem">
-                <div class="orbital-ring outer-ring"></div>
-                <div class="orbital-ring inner-ring"></div>
-                <div class="emblem-laser-glow"></div>
-                <div class="emblem-core-frame">
+            <!-- 1. Magic Rings Loading Animation from React Bits (Centered Logo preserved) -->
+            <div class="splash-magic-rings-wrap" id="splash-magic-rings-wrap">
+                <div id="splash-magic-rings-root" class="splash-magic-rings-canvas-host"></div>
+                <div class="splash-magic-rings-logo-core" id="splash-logo-core">
                     <img src="/static/logo.png" alt="RustAudit AI" class="splash-logo-img">
                 </div>
             </div>
@@ -56,6 +62,94 @@
 
             <!-- 3. React Bits <TextType /> for Subtitle -->
             <div id="splash-subtitle-root" class="splash-subtitle-container"></div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Simplified Cybernetic Loading Screen                         -->
+    <!-- Modern orbital vortex loader + sequential list that turns    -->
+    <!-- green and fades to maintain focus on the active phase       -->
+    <!-- ============================================================ -->
+    <div id="audit-loading-screen" class="audit-loading-overlay" style="display: none;">
+        <div class="audit-loading-backdrop-glow"></div>
+
+        <div class="audit-loading-modal-clean">
+            <!-- Modern Orbital Vortex Loader (replaces simple progress bar) -->
+            <div class="modern-vortex-loader" id="modern-vortex-loader">
+                <div class="vortex-ring ring-outer"></div>
+                <div class="vortex-ring ring-mid"></div>
+                <div class="vortex-ring ring-inner"></div>
+                <div class="vortex-glow-core">
+                    <img src="/static/logo.png" alt="RustAudit" class="vortex-logo">
+                </div>
+            </div>
+
+            <!-- Focused Header & Dynamic Status Typewriter -->
+            <div class="audit-loading-header">
+                <h2 class="loading-main-title">Auditing Subroutine Quality</h2>
+                <div class="loading-status-line">
+                    <span id="loading-active-status" class="loading-active-status">Initializing semantic graph compilation...</span>
+                    <span class="loading-cursor">|</span>
+                </div>
+            </div>
+
+            <!-- Simplified Sequential Pipeline List (fades after becoming green) -->
+            <div class="audit-sequential-list" id="audit-sequential-list">
+                <div class="audit-step-item" id="step-item-0" data-step="0">
+                    <div class="step-indicator-box">
+                        <div class="step-pulse-spinner"></div>
+                        <i class="fa-solid fa-check step-check-icon"></i>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-label">Syntax Parsing &amp; AST Extraction</div>
+                        <div class="step-sub">Decomposing expressions, functions &amp; lexical tokens</div>
+                    </div>
+                </div>
+
+                <div class="audit-step-item" id="step-item-1" data-step="1">
+                    <div class="step-indicator-box">
+                        <div class="step-pulse-spinner"></div>
+                        <i class="fa-solid fa-check step-check-icon"></i>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-label">Control Flow &amp; Cyclomatic Complexity</div>
+                        <div class="step-sub">Mapping decision paths, branch conditions &amp; loops</div>
+                    </div>
+                </div>
+
+                <div class="audit-step-item" id="step-item-2" data-step="2">
+                    <div class="step-indicator-box">
+                        <div class="step-pulse-spinner"></div>
+                        <i class="fa-solid fa-check step-check-icon"></i>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-label">Ownership &amp; Borrow Graph (FLOG)</div>
+                        <div class="step-sub">Tracing borrow lifelines, mutability &amp; allocation invariants</div>
+                    </div>
+                </div>
+
+                <div class="audit-step-item" id="step-item-3" data-step="3">
+                    <div class="step-indicator-box">
+                        <div class="step-pulse-spinner"></div>
+                        <i class="fa-solid fa-check step-check-icon"></i>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-label">RQI Quality Vectors &amp; MITRE CWE Auditing</div>
+                        <div class="step-sub">Evaluating Safety, Performance, Maintainability &amp; Security</div>
+                    </div>
+                </div>
+
+                <div class="audit-step-item" id="step-item-4" data-step="4">
+                    <div class="step-indicator-box">
+                        <div class="step-pulse-spinner"></div>
+                        <i class="fa-solid fa-check step-check-icon"></i>
+                    </div>
+                    <div class="step-content">
+                        <div class="step-label">AI Remediation &amp; Clean Refactoring</div>
+                        <div class="step-sub">Synthesizing verified zero-unsafe patch &amp; refactored RQI</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -162,14 +256,7 @@
                         <!-- Monospace Code Editor Stage with Syntax Underlay -->
                         <div class="editor-code-stage" id="editor-code-stage">
                             <pre class="editor-highlight-underlay" id="editor-highlight-underlay" aria-hidden="true"><code id="editor-highlight-code" class="language-rust"></code></pre>
-                            <textarea id="code-editor" class="code-editor-textarea" spellcheck="false" placeholder="// Paste or type your Rust function subroutine here...
-pub fn process_user_data(data: &str) -> String {
-    let duplicate = data.to_string().clone();
-    unsafe {
-        let ptr = data.as_ptr();
-    }
-    duplicate
-}"></textarea>
+                            <textarea id="code-editor" class="code-editor-textarea" spellcheck="false" placeholder="// Paste or type your Rust function subroutine here..."></textarea>
                         </div>
                     </div>
 
@@ -386,36 +473,36 @@ pub fn process_user_data(data: &str) -> String {
                     <!-- Top: RQI of new refactored code & 4 Metrics in 2x2 grid -->
                     <div class="eval-hero-section">
                         <div class="eval-hero-split-row">
-                            <!-- Left: Refactored RQI Card (100 / 100) -->
+                            <!-- Left: Refactored RQI Card (Calculated dynamically) -->
                             <div class="rqi-hero-card refactored-hero-card">
                                 <div class="hero-dial-wrapper">
                                     <svg viewBox="0 0 36 36" class="circular-chart">
                                         <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                                        <path class="circle-fill" stroke="var(--vec-maint)" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <path id="refactored-score-circle-path" class="circle-fill" stroke="var(--vec-maint)" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
                                     </svg>
                                     <div class="dial-center-content">
-                                        <span class="score-num" style="color: var(--vec-maint);">100</span>
+                                        <span class="score-num" id="refactored-rqi-score-num" style="color: var(--vec-maint);">--</span>
                                         <span class="score-max">/ 100</span>
                                     </div>
                                 </div>
                                 <div class="hero-meta-details">
                                     <h3>Refactored RQI Score</h3>
                                     <div class="grade-badge-row">
-                                        <div class="grade-letter-chip" style="background: var(--vec-maint-dim); color: var(--vec-maint); border-color: var(--vec-maint);">A+</div>
-                                        <span class="grade-text-verdict" style="color: var(--vec-maint);">Optimal Idiomatic Quality</span>
+                                        <div class="grade-letter-chip" id="refactored-rqi-grade-letter" style="background: var(--vec-maint-dim); color: var(--vec-maint); border-color: var(--vec-maint);">--</div>
+                                        <span class="grade-text-verdict" id="refactored-rqi-grade-text" style="color: var(--vec-maint);">Calculating...</span>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Right: 4 Metrics in 2x2 Grid (100 each) -->
+                            <!-- Right: 4 Metrics in 2x2 Grid (Calculated dynamically) -->
                             <div class="eval-metrics-2x2-grid">
                                 <div class="metric-2x2-tile">
                                     <div class="tile-dial-box">
                                         <svg viewBox="0 0 36 36" class="circular-chart">
                                             <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                                            <path class="circle-fill" stroke="var(--vec-safety)" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                            <path id="refactored-path-safety" class="circle-fill" stroke="var(--vec-safety)" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
                                         </svg>
-                                        <div class="tile-dial-content" style="color: var(--vec-safety);">100</div>
+                                        <div class="tile-dial-content" id="refactored-val-safety" style="color: var(--vec-safety);">--</div>
                                     </div>
                                     <div class="tile-info">
                                         <span class="t-label"><i class="fa-solid fa-user-shield" style="color: var(--vec-safety);"></i> Safety</span>
@@ -426,9 +513,9 @@ pub fn process_user_data(data: &str) -> String {
                                     <div class="tile-dial-box">
                                         <svg viewBox="0 0 36 36" class="circular-chart">
                                             <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                                            <path class="circle-fill" stroke="var(--vec-perf)" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                            <path id="refactored-path-perf" class="circle-fill" stroke="var(--vec-perf)" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
                                         </svg>
-                                        <div class="tile-dial-content" style="color: var(--vec-perf);">100</div>
+                                        <div class="tile-dial-content" id="refactored-val-perf" style="color: var(--vec-perf);">--</div>
                                     </div>
                                     <div class="tile-info">
                                         <span class="t-label"><i class="fa-solid fa-bolt" style="color: var(--vec-perf);"></i> Performance</span>
@@ -439,9 +526,9 @@ pub fn process_user_data(data: &str) -> String {
                                     <div class="tile-dial-box">
                                         <svg viewBox="0 0 36 36" class="circular-chart">
                                             <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                                            <path class="circle-fill" stroke="var(--vec-maint)" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                            <path id="refactored-path-maint" class="circle-fill" stroke="var(--vec-maint)" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
                                         </svg>
-                                        <div class="tile-dial-content" style="color: var(--vec-maint);">100</div>
+                                        <div class="tile-dial-content" id="refactored-val-maint" style="color: var(--vec-maint);">--</div>
                                     </div>
                                     <div class="tile-info">
                                         <span class="t-label"><i class="fa-solid fa-code-fork" style="color: var(--vec-maint);"></i> Maintainability</span>
@@ -452,9 +539,9 @@ pub fn process_user_data(data: &str) -> String {
                                     <div class="tile-dial-box">
                                         <svg viewBox="0 0 36 36" class="circular-chart">
                                             <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                                            <path class="circle-fill" stroke="var(--vec-sec)" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                            <path id="refactored-path-sec" class="circle-fill" stroke="var(--vec-sec)" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
                                         </svg>
-                                        <div class="tile-dial-content" style="color: var(--vec-sec);">100</div>
+                                        <div class="tile-dial-content" id="refactored-val-sec" style="color: var(--vec-sec);">--</div>
                                     </div>
                                     <div class="tile-info">
                                         <span class="t-label"><i class="fa-solid fa-shield-halved" style="color: var(--vec-sec);"></i> Security</span>
@@ -472,7 +559,7 @@ pub fn process_user_data(data: &str) -> String {
                                 <div class="acc-header-left">
                                     <i class="fa-solid fa-diagram-project acc-accent-icon" style="color: var(--vec-maint);"></i>
                                     <span class="acc-title-text">Refactored Graph Topology</span>
-                                    <span class="acc-badge" style="background: var(--vec-maint-dim); color: var(--vec-maint); border-color: var(--vec-maint);">Zero Unsafe</span>
+                                    <span class="acc-badge" id="refactored-acc-graph-badge" style="background: var(--vec-maint-dim); color: var(--vec-maint); border-color: var(--vec-maint);">Zero Unsafe</span>
                                 </div>
                                 <i class="fa-solid fa-chevron-down acc-arrow"></i>
                             </button>
@@ -490,9 +577,9 @@ pub fn process_user_data(data: &str) -> String {
                                         <div id="refactored-interactive-canvas" class="canvas-element"></div>
                                     </div>
                                     <div class="graph-metrics-status-bar">
-                                        <div class="metric-stat-item"><span class="lbl">Unsafe Operations:</span> <span class="val" style="color: var(--vec-maint);">0</span></div>
-                                        <div class="metric-stat-item"><span class="lbl">Redundant Clones:</span> <span class="val" style="color: var(--vec-maint);">0</span></div>
-                                        <div class="metric-stat-item"><span class="lbl">Topology Health:</span> <span class="val" style="color: var(--vec-maint);">Optimal Invariants</span></div>
+                                        <div class="metric-stat-item"><span class="lbl">Unsafe Operations:</span> <span class="val" id="refactored-stat-unsafe" style="color: var(--vec-maint);">0</span></div>
+                                        <div class="metric-stat-item"><span class="lbl">Redundant Clones:</span> <span class="val" id="refactored-stat-clones" style="color: var(--vec-maint);">0</span></div>
+                                        <div class="metric-stat-item"><span class="lbl">Topology Health:</span> <span class="val" id="refactored-stat-health" style="color: var(--vec-maint);">Optimal Invariants</span></div>
                                     </div>
                                 </div>
                             </div>
@@ -549,6 +636,6 @@ pub fn process_user_data(data: &str) -> String {
     <div class="toast-container" id="toast-container"></div>
 
     <!-- Client-Side Dashboard Logic -->
-    <script src="/static/js/app.js?v=2.0_rebuild"></script>
+    <script src="/static/js/app.js?v=3.4_magic_rings"></script>
 </body>
 </html>

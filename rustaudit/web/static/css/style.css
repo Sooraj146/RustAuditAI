@@ -814,35 +814,34 @@ body {
     height: 100%;
     flex: 1;
     background: transparent !important;
-    border: none !important;
-    outline: none !important;
+    border: none;
+    outline: none;
     color: transparent !important;
     -webkit-text-fill-color: transparent !important;
-    caret-color: var(--brand-cyan, #38bdf8) !important;
-    font-family: var(--font-mono) !important;
-    font-size: 0.85rem !important;
-    line-height: 22px !important;
-    letter-spacing: normal !important;
-    padding: 1rem !important;
-    resize: none !important;
-    tab-size: 4 !important;
-    -moz-tab-size: 4 !important;
-    white-space: pre !important;
-    word-wrap: normal !important;
-    overflow: auto !important;
-    box-sizing: border-box !important;
-    z-index: 2 !important;
+    caret-color: var(--brand-cyan, #38bdf8);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    line-height: 22px;
+    letter-spacing: normal;
+    padding: 1rem;
+    resize: none;
+    tab-size: 4;
+    -moz-tab-size: 4;
+    white-space: pre;
+    word-wrap: normal;
+    overflow: auto;
+    box-sizing: border-box;
+    z-index: 2;
 }
 
 .code-editor-textarea::selection {
-    background: oklch(50% 0.2 200 / 35%) !important;
+    background: oklch(50% 0.2 200 / 35%);
     color: transparent !important;
     -webkit-text-fill-color: transparent !important;
 }
 
 .code-editor-textarea::placeholder {
-    color: var(--text-dim) !important;
-    -webkit-text-fill-color: var(--text-dim) !important;
+    color: var(--text-dim);
 }
 
 /* Panel Footer Controls */
@@ -2105,59 +2104,48 @@ input:checked + .slider::before {
     user-select: none;
 }
 
-.splash-emblem-wrap {
+.splash-magic-rings-wrap {
     position: relative;
-    width: 140px;
-    height: 140px;
+    width: 380px;
+    height: 380px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 1.5rem;
+    margin: 0 auto 0.5rem;
+    pointer-events: auto;
 }
 
-.orbital-ring {
+.splash-magic-rings-canvas-host {
     position: absolute;
-    border-radius: 50%;
-    pointer-events: none;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    pointer-events: auto;
 }
 
-.orbital-ring.outer-ring {
-    width: 136px;
-    height: 136px;
-    border: 2px dashed rgba(6, 182, 212, 0.65);
-    animation: rotateRing 14s linear infinite;
-    box-shadow: 0 0 15px rgba(6, 182, 212, 0.25);
-}
-
-.orbital-ring.inner-ring {
-    width: 106px;
-    height: 106px;
-    border: 2px dotted rgba(249, 115, 22, 0.75);
-    animation: counterRotateRing 9s linear infinite;
-    box-shadow: 0 0 15px rgba(249, 115, 22, 0.25);
-}
-
-.emblem-laser-glow {
-    position: absolute;
-    width: 90px;
-    height: 90px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(249, 115, 22, 0.4) 0%, rgba(6, 182, 212, 0.25) 55%, transparent 100%);
-    filter: blur(14px);
-    animation: pulseGlow 2.5s ease-in-out infinite alternate;
-}
-
-.emblem-core-frame {
+.splash-magic-rings-logo-core {
     position: relative;
+    z-index: 10;
     width: 78px;
     height: 78px;
     border-radius: 20px;
-    background: rgba(16, 21, 31, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(16, 21, 31, 0.94);
+    border: 1px solid rgba(255, 255, 255, 0.22);
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 0 25px rgba(249, 115, 22, 0.3);
+    box-shadow: 0 0 35px rgba(249, 115, 22, 0.45), 0 0 20px rgba(6, 182, 212, 0.35);
+    backdrop-filter: blur(10px);
+    pointer-events: auto;
+    cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+.splash-magic-rings-logo-core:hover {
+    transform: scale(1.08);
+    box-shadow: 0 0 45px rgba(249, 115, 22, 0.65), 0 0 28px rgba(66, 252, 255, 0.55);
 }
 
 .splash-logo-img {
@@ -2979,64 +2967,90 @@ input:checked + .slider::before {
 /* ==========================================================================
    Rust Syntax Highlighting Tokens (Workstation & Patched Subroutine)
    ========================================================================== */
-.hl-keyword, code .hl-keyword, pre .hl-keyword {
-    color: #ff60a8 !important; /* Vivid Cyber Pink: fn, let, pub, struct, enum, impl, match, if, else, for, etc. */
-    font-weight: 700 !important;
-}
-
-.hl-unsafe, code .hl-unsafe, pre .hl-unsafe {
-    color: #ff3344 !important; /* High-Visibility Severity Red: unsafe */
-    font-weight: 800 !important;
-    text-shadow: 0 0 12px rgba(255, 51, 68, 0.6) !important;
-}
-
-.hl-mut, code .hl-mut, pre .hl-mut {
-    color: #ff8833 !important; /* Rust Orange: mut */
-    font-weight: 700 !important;
-}
-
-.hl-type, code .hl-type, pre .hl-type {
-    color: #38d6ff !important; /* Neon Sky Cyan: i32, usize, str, String, Vec, Option, Result, etc. */
+.hl-keyword,
+.editor-highlight-underlay .hl-keyword,
+.refactored-code-pre .hl-keyword {
+    color: #f472b6 !important; /* Cyber Pink: fn, let, pub, struct, enum, impl, match, if, else, for, etc. */
     font-weight: 600 !important;
 }
 
-.hl-macro, code .hl-macro, pre .hl-macro {
-    color: #ffd000 !important; /* Neon Yellow/Gold: println!, format!, vec!, panic! */
+.hl-unsafe,
+.editor-highlight-underlay .hl-unsafe,
+.refactored-code-pre .hl-unsafe {
+    color: #ef4444 !important; /* High-Visibility Severity Red: unsafe */
+    font-weight: 800 !important;
+    text-shadow: 0 0 10px rgba(239, 68, 68, 0.45) !important;
+}
+
+.hl-mut,
+.editor-highlight-underlay .hl-mut,
+.refactored-code-pre .hl-mut {
+    color: #fb923c !important; /* Rust Orange: mut */
     font-weight: 700 !important;
 }
 
-.hl-string, code .hl-string, pre .hl-string {
-    color: #39e578 !important; /* Emerald Green: string literals "..." */
+.hl-type,
+.editor-highlight-underlay .hl-type,
+.refactored-code-pre .hl-type {
+    color: #38bdf8 !important; /* Neon Sky Cyan: i32, usize, str, String, Vec, Option, Result, etc. */
+    font-weight: 600 !important;
 }
 
-.hl-char, code .hl-char, pre .hl-char {
+.hl-macro,
+.editor-highlight-underlay .hl-macro,
+.refactored-code-pre .hl-macro {
+    color: #facc15 !important; /* Neon Yellow/Gold: println!, format!, vec!, panic! */
+    font-weight: 600 !important;
+}
+
+.hl-string,
+.editor-highlight-underlay .hl-string,
+.refactored-code-pre .hl-string {
+    color: #4ade80 !important; /* Emerald Green: string literals "..." */
+}
+
+.hl-char,
+.editor-highlight-underlay .hl-char,
+.refactored-code-pre .hl-char {
     color: #86efac !important; /* Mint Green: character literals 'c' */
 }
 
-.hl-number, code .hl-number, pre .hl-number {
+.hl-number,
+.editor-highlight-underlay .hl-number,
+.refactored-code-pre .hl-number {
     color: #fbbf24 !important; /* Amber Gold: numbers */
 }
 
-.hl-lifetime, code .hl-lifetime, pre .hl-lifetime {
+.hl-lifetime,
+.editor-highlight-underlay .hl-lifetime,
+.refactored-code-pre .hl-lifetime {
     color: #c084fc !important; /* Violet/Purple: lifetimes 'a, 'static */
     font-style: italic !important;
 }
 
-.hl-attribute, code .hl-attribute, pre .hl-attribute {
+.hl-attribute,
+.editor-highlight-underlay .hl-attribute,
+.refactored-code-pre .hl-attribute {
     color: #a78bfa !important; /* Soft Lavender: #[derive(...)] */
 }
 
-.hl-comment, code .hl-comment, pre .hl-comment {
+.hl-comment,
+.editor-highlight-underlay .hl-comment,
+.refactored-code-pre .hl-comment {
     color: #64748b !important; /* Muted Slate Gray: comments // ... */
     font-style: italic !important;
 }
 
-.hl-bool, code .hl-bool, pre .hl-bool {
+.hl-bool,
+.editor-highlight-underlay .hl-bool,
+.refactored-code-pre .hl-bool {
     color: #f97316 !important; /* Coral: true, false */
-    font-weight: 700 !important;
+    font-weight: 600 !important;
 }
 
-.hl-op, code .hl-op, pre .hl-op {
+.hl-op,
+.editor-highlight-underlay .hl-op,
+.refactored-code-pre .hl-op {
     color: #94a3b8 !important; /* Steel: ->, =>, ::, &, *, = */
 }
 
@@ -3073,4 +3087,355 @@ input:checked + .slider::before {
     width: 100%;
 }
 
+/* ==========================================================================
+   Simplified Cybernetic Loading Screen & Modern Vortex Animation
+   ========================================================================== */
+.audit-loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9500;
+    background: radial-gradient(circle at 50% 35%, oklch(15% 0.03 260 / 96%) 0%, oklch(6.5% 0.015 260 / 98%) 100%);
+    backdrop-filter: blur(28px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 2rem 1.5rem;
+    transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.5s;
+}
 
+.audit-loading-overlay.loading-dismissed {
+    opacity: 0;
+    transform: scale(1.04);
+    pointer-events: none;
+    visibility: hidden;
+}
+
+.audit-loading-backdrop-glow {
+    position: absolute;
+    width: 650px;
+    height: 480px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at center, rgba(6, 182, 212, 0.16) 0%, rgba(249, 115, 22, 0.1) 45%, transparent 75%);
+    filter: blur(60px);
+    pointer-events: none;
+    animation: pulseAmbientGlow 4s ease-in-out infinite alternate;
+}
+
+@keyframes pulseAmbientGlow {
+    0% { transform: scale(0.9) translate(-5%, -5%); opacity: 0.6; }
+    100% { transform: scale(1.1) translate(5%, 5%); opacity: 0.95; }
+}
+
+.audit-loading-modal-clean {
+    position: relative;
+    z-index: 10;
+    max-width: 580px;
+    width: 100%;
+    background: linear-gradient(145deg, oklch(17.5% 0.032 260 / 92%), oklch(13% 0.024 275 / 95%));
+    border: 1px solid oklch(76% 0.160 200 / 30%);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 28px 70px rgba(0, 0, 0, 0.8), 0 0 50px oklch(76% 0.160 200 / 12%), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    padding: 2.25rem 2.2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.6rem;
+    animation: modalPopIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalPopIn {
+    0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Modern Orbital Vortex Loader */
+.modern-vortex-loader {
+    position: relative;
+    width: 110px;
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vortex-ring {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.vortex-ring.ring-outer {
+    width: 108px;
+    height: 108px;
+    border: 2px solid transparent;
+    border-top-color: var(--brand-cyan);
+    border-right-color: var(--brand-cyan);
+    box-shadow: 0 0 16px rgba(6, 182, 212, 0.4);
+    animation: rotateVortex1 2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+.vortex-ring.ring-mid {
+    width: 86px;
+    height: 86px;
+    border: 2px dashed rgba(249, 115, 22, 0.85);
+    box-shadow: 0 0 14px rgba(249, 115, 22, 0.35);
+    animation: rotateVortex2 3.6s linear infinite;
+}
+
+.vortex-ring.ring-inner {
+    width: 66px;
+    height: 66px;
+    border: 2px dotted rgba(16, 185, 129, 0.75);
+    animation: rotateVortex1 5s linear infinite reverse;
+}
+
+.vortex-glow-core {
+    position: relative;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    background: rgba(15, 20, 29, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.45);
+    animation: pulseCore 2s ease-in-out infinite alternate;
+}
+
+.vortex-logo {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 8px rgba(249, 115, 22, 0.6));
+    animation: floatEmblem 2.6s ease-in-out infinite alternate;
+}
+
+/* Success transition for vortex */
+.modern-vortex-loader.is-success .vortex-ring.ring-outer,
+.modern-vortex-loader.is-success .vortex-ring.ring-mid,
+.modern-vortex-loader.is-success .vortex-ring.ring-inner {
+    border-color: var(--vec-maint) !important;
+    box-shadow: 0 0 24px rgba(16, 185, 129, 0.7) !important;
+    transition: all 0.4s ease;
+}
+
+.modern-vortex-loader.is-success .vortex-glow-core {
+    box-shadow: 0 0 28px rgba(16, 185, 129, 0.6) !important;
+    border-color: var(--vec-maint) !important;
+}
+
+@keyframes rotateVortex1 {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes rotateVortex2 {
+    0% { transform: rotate(360deg); }
+    100% { transform: rotate(0deg); }
+}
+
+@keyframes pulseCore {
+    0% { transform: scale(0.94); box-shadow: 0 0 14px rgba(6, 182, 212, 0.35); }
+    100% { transform: scale(1.06); box-shadow: 0 0 26px rgba(6, 182, 212, 0.65); }
+}
+
+/* Header & Status */
+.audit-loading-header {
+    text-align: center;
+    width: 100%;
+}
+
+.loading-main-title {
+    font-family: var(--font-display);
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.35rem;
+}
+
+.loading-status-line {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    font-family: var(--font-mono);
+    font-size: 0.84rem;
+    color: var(--brand-cyan);
+    min-height: 1.4rem;
+}
+
+.loading-active-status {
+    color: var(--brand-cyan);
+}
+
+.loading-cursor {
+    color: var(--brand-cyan);
+    font-weight: 700;
+    animation: cursorBlink 0.65s steps(1) infinite;
+}
+
+/* Simplified Sequential Pipeline List */
+.audit-sequential-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    width: 100%;
+}
+
+.audit-step-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: oklch(15.5% 0.024 260 / 60%);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-md);
+    opacity: 0.28;
+    transform: scale(0.99);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.audit-step-item .step-indicator-box {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: oklch(13% 0.02 260);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+    transition: all 0.35s ease;
+}
+
+.step-pulse-spinner {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: var(--brand-cyan);
+    border-right-color: var(--brand-cyan);
+    animation: rotateRing 1s linear infinite;
+    display: none;
+}
+
+.step-check-icon {
+    font-size: 0.85rem;
+    color: var(--vec-maint);
+    display: none;
+    transform: scale(0);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.audit-step-item .step-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.audit-step-item .step-label {
+    font-family: var(--font-display);
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: color 0.3s ease;
+}
+
+.audit-step-item .step-sub {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+    transition: color 0.3s ease;
+}
+
+/* 1. Active Step State: Bright, highlighted, glowing cyan */
+.audit-step-item.is-active {
+    opacity: 1 !important;
+    transform: scale(1.015);
+    background: linear-gradient(135deg, oklch(21% 0.045 200 / 30%), oklch(17% 0.035 200 / 40%));
+    border-color: var(--brand-cyan);
+    box-shadow: 0 4px 20px rgba(6, 182, 212, 0.2), inset 0 0 12px rgba(6, 182, 212, 0.08);
+}
+
+.audit-step-item.is-active .step-indicator-box {
+    background: rgba(6, 182, 212, 0.15);
+    border-color: var(--brand-cyan);
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+}
+
+.audit-step-item.is-active .step-pulse-spinner {
+    display: block;
+}
+
+.audit-step-item.is-active .step-label {
+    color: #ffffff;
+    font-weight: 700;
+}
+
+.audit-step-item.is-active .step-sub {
+    color: var(--brand-cyan);
+}
+
+/* 2. Done Step State: Vibrantly Turns Green! */
+.audit-step-item.is-done {
+    opacity: 1;
+    transform: scale(1);
+    background: oklch(18% 0.04 152 / 28%);
+    border-color: var(--vec-maint);
+    box-shadow: 0 4px 18px rgba(16, 185, 129, 0.25);
+}
+
+.audit-step-item.is-done .step-indicator-box {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: var(--vec-maint);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+}
+
+.audit-step-item.is-done .step-pulse-spinner {
+    display: none;
+}
+
+.audit-step-item.is-done .step-check-icon {
+    display: block;
+    transform: scale(1);
+}
+
+.audit-step-item.is-done .step-label {
+    color: #ffffff;
+}
+
+.audit-step-item.is-done .step-sub {
+    color: var(--vec-maint);
+}
+
+/* 3. Faded Step State: "fades after becoming green" */
+.audit-step-item.is-faded {
+    opacity: 0.38 !important;
+    transform: scale(0.99);
+    background: oklch(15.5% 0.024 260 / 40%);
+    border-color: rgba(16, 185, 129, 0.2);
+    box-shadow: none;
+}
+
+.audit-step-item.is-faded .step-indicator-box {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+    box-shadow: none;
+}
+
+.audit-step-item.is-faded .step-check-icon {
+    display: block;
+    color: rgba(16, 185, 129, 0.7);
+}
+
+.audit-step-item.is-faded .step-label {
+    color: var(--text-muted);
+}
+
+.audit-step-item.is-faded .step-sub {
+    color: var(--text-dim);
+}

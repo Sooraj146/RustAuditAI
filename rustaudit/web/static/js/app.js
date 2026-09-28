@@ -128,16 +128,44 @@ document.addEventListener("DOMContentLoaded", () => {
     const refactoredGutter = document.getElementById("refactored-gutter");
     const refactoredInteractiveCanvas = document.getElementById("refactored-interactive-canvas");
 
+    // Section 2: Refactored Code Evaluation Elements
+    const refactoredRqiScoreNum = document.getElementById("refactored-rqi-score-num");
+    const refactoredScoreCirclePath = document.getElementById("refactored-score-circle-path");
+    const refactoredRqiGradeLetter = document.getElementById("refactored-rqi-grade-letter");
+    const refactoredRqiGradeText = document.getElementById("refactored-rqi-grade-text");
+
+    const refactoredValSafety = document.getElementById("refactored-val-safety");
+    const refactoredPathSafety = document.getElementById("refactored-path-safety");
+    const refactoredValPerf = document.getElementById("refactored-val-perf");
+    const refactoredPathPerf = document.getElementById("refactored-path-perf");
+    const refactoredValMaint = document.getElementById("refactored-val-maint");
+    const refactoredPathMaint = document.getElementById("refactored-path-maint");
+    const refactoredValSec = document.getElementById("refactored-val-sec");
+    const refactoredPathSec = document.getElementById("refactored-path-sec");
+
+    const refactoredStatUnsafe = document.getElementById("refactored-stat-unsafe");
+    const refactoredStatClones = document.getElementById("refactored-stat-clones");
+    const refactoredStatHealth = document.getElementById("refactored-stat-health");
+    const refactoredAccGraphBadge = document.getElementById("refactored-acc-graph-badge");
+
     // Toast Container
     const toastContainer = document.getElementById("toast-container");
 
-    // --- Cybernetic Splash Screen (Logo + Sequential React Bits TextType Animations) ---
+    // Simplified Cybernetic Audit Loading Screen Elements
+    const auditLoadingScreen = document.getElementById("audit-loading-screen");
+    const loadingActiveStatus = document.getElementById("loading-active-status");
+    const modernVortexLoader = document.getElementById("modern-vortex-loader");
+    const auditSequentialList = document.getElementById("audit-sequential-list");
+
+    // --- Initial Loading Page (Splash Screen: React Bits MagicRings + Logo + TextType) ---
     const splashScreen = document.getElementById("splash-screen");
+    const splashMagicRingsRoot = document.getElementById("splash-magic-rings-root");
     const splashTitleRoot = document.getElementById("splash-title-root");
     const splashSubtitleRoot = document.getElementById("splash-subtitle-root");
     const replayIntroBtn = document.getElementById("replay-intro-btn");
 
     let splashTimers = [];
+    let splashMagicRingsReactRoot = null;
     let splashTitleReactRoot = null;
     let splashSubtitleReactRoot = null;
 
@@ -149,14 +177,59 @@ document.addEventListener("DOMContentLoaded", () => {
         splashTimers = [];
     }
 
+    function mountSplashMagicRings() {
+        if (!splashMagicRingsRoot) return;
+        if (typeof React !== 'undefined' && typeof ReactDOM !== 'undefined' && window.MagicRings) {
+            try {
+                if (!splashMagicRingsReactRoot) {
+                    splashMagicRingsReactRoot = ReactDOM.createRoot(splashMagicRingsRoot);
+                }
+                splashMagicRingsReactRoot.render(
+                    React.createElement(
+                        window.MagicRings,
+                        {
+                            color: "#fc42ff",
+                            colorTwo: "#42fcff",
+                            ringCount: 6,
+                            speed: 1,
+                            attenuation: 7.5,
+                            lineThickness: 2.2,
+                            baseRadius: 0.20,
+                            radiusStep: 0.05,
+                            scaleRate: 0.08,
+                            opacity: 1,
+                            blur: 0,
+                            noiseAmount: 0.08,
+                            rotation: 0,
+                            ringGap: 1.5,
+                            fadeIn: 0.4,
+                            fadeOut: 2.3,
+                            followMouse: true,
+                            mouseInfluence: 0.2,
+                            hoverScale: 1.2,
+                            parallax: 0.05,
+                            clickBurst: true,
+                            alphaMode: "luminance",
+                        }
+                    )
+                );
+            } catch (err) {
+                console.warn("MagicRings React mount error:", err);
+            }
+        }
+    }
+
     function runSplashSequence() {
         if (!splashScreen) return;
         clearAllSplashTimers();
         splashScreen.style.display = "flex";
         splashScreen.classList.remove("splash-dismissed");
 
-        // Fail-safe timeout: ensure dashboard is always accessible within 5 seconds max
-        const safetyDismissTimer = setTimeout(dismissSplashScreen, 5200);
+        // Mount React Bits MagicRings animation surrounding the central logo
+        mountSplashMagicRings();
+
+        // Fail-safe timeout: ensure dashboard is always accessible within 5.5 seconds max
+        const safetyDismissTimer = setTimeout(dismissSplashScreen, 5500);
         splashTimers.push(safetyDismissTimer);
 
         const titleString = "RustAudit AI";
@@ -164,7 +237,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let hasCompletedSubtitle = false;
         let hasCompletedTitle = false;
 
-        // Stage 1: Reset Text Containers so ONLY the Logo is displayed first with its orbital ring animation
+        // Stage 1: Reset Text Containers so the Magic Rings + Logo shine first
         if (splashTitleReactRoot) {
             try { splashTitleReactRoot.render(null); } catch (e) {}
         }
@@ -175,7 +248,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         if (splashSubtitleRoot) splashSubtitleRoot.innerHTML = "";
 
-        // Stage 2: After the logo orbital entrance (~600ms), start TextType typing for "RustAudit AI"
+        // Stage 2: After the magic rings appear (~500ms), start TextType typing for "RustAudit AI"
         const titleStartTimer = setTimeout(() => {
             typeTitle(titleString, () => {
                 if (hasCompletedTitle) return;
@@ -187,11 +260,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     hasCompletedSubtitle = true;
 
                     // Stage 4: Comfortable reading pause, then dissolve into the dashboard
-                    const exitTimer = setTimeout(dismissSplashScreen, 1300);
+                    const exitTimer = setTimeout(dismissSplashScreen, 1400);
                     splashTimers.push(exitTimer);
                 });
             });
-        }, 600);
+        }, 500);
 
         splashTimers.push(titleStartTimer);
     }
@@ -541,6 +614,16 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
                 editorHighlightUnderlay.scrollLeft = codeEditor.scrollLeft;
             }
         });
+
+        // Auto-load calibrated sample subroutine on initial dashboard open
+        if (!codeEditor.value.trim()) {
+            codeEditor.value = sampleRustCode;
+            if (fileBadge && fileNameText) {
+                fileNameText.textContent = "sample_func.rs";
+                fileBadge.style.display = "inline-flex";
+            }
+        }
+
         updateEditorGutter();
         updateEditorHighlighting();
         adjustPreAuditEditorHeight();
@@ -576,6 +659,184 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
         devModeToggle.addEventListener("change", (e) => setPerspective(e.target.checked ? "developer" : "executive"));
     }
 
+    // ==========================================================================
+    // Simplified Cybernetic Audit Loading Controller
+    // Modern vortex animation + sequential list that turns green & fades
+    // ==========================================================================
+    const SIMPLIFIED_AUDIT_STEPS = [
+        {
+            index: 0,
+            status: "Parsing syntax tokens & Abstract Syntax Tree...",
+            holdMs: 400,
+        },
+        {
+            index: 1,
+            status: "Constructing Control Flow Graph & Cyclomatic Paths...",
+            holdMs: 450,
+        },
+        {
+            index: 2,
+            status: "Tracing Ownership, Borrow Lifelines & FLOG Invariants...",
+            holdMs: 500,
+        },
+        {
+            index: 3,
+            status: "Evaluating RQI Quality Vectors & MITRE CWE Auditing...",
+            holdMs: 550,
+        },
+        {
+            index: 4,
+            status: "Synthesizing AI Remediation & Clean Refactoring...",
+            holdMs: 600,
+        },
+    ];
+
+    let auditLoadingActive = false;
+
+    async function sleepWithCancel(ms, checkCancel) {
+        const step = 20;
+        let elapsed = 0;
+        while (elapsed < ms) {
+            if (checkCancel && checkCancel()) return;
+            await new Promise(r => setTimeout(r, Math.min(step, ms - elapsed)));
+            elapsed += step;
+        }
+    }
+
+    async function typeLoadingStatus(text, speed = 18, checkCancel) {
+        if (!loadingActiveStatus) return;
+        loadingActiveStatus.textContent = "";
+        for (let i = 0; i <= text.length; i++) {
+            if (checkCancel && checkCancel()) return;
+            loadingActiveStatus.textContent = text.slice(0, i);
+            await new Promise(r => setTimeout(r, speed));
+        }
+    }
+
+    function setStepState(stepIdx, state) {
+        const el = document.getElementById(`step-item-${stepIdx}`);
+        if (!el) return;
+        if (state === "reset") {
+            el.classList.remove("is-active", "is-done", "is-faded");
+        } else if (state === "active") {
+            el.classList.remove("is-done", "is-faded");
+            el.classList.add("is-active");
+        } else if (state === "done") {
+            el.classList.remove("is-active", "is-faded");
+            el.classList.add("is-done");
+        } else if (state === "faded") {
+            el.classList.remove("is-active");
+            el.classList.add("is-done", "is-faded");
+        }
+    }
+
+    function resetAllAuditSteps() {
+        for (let i = 0; i < 5; i++) {
+            setStepState(i, "reset");
+        }
+        if (modernVortexLoader) modernVortexLoader.classList.remove("is-success");
+    }
+
+    async function runAuditLoadingSequence(fetchPromise, sourceCode) {
+        if (!auditLoadingScreen) return await fetchPromise;
+
+        auditLoadingActive = true;
+        let isCancelled = false;
+        const checkCancel = () => !auditLoadingActive || isCancelled;
+
+        // Reset steps & loader state
+        resetAllAuditSteps();
+        if (loadingActiveStatus) {
+            loadingActiveStatus.textContent = "Initializing semantic graph compilation...";
+        }
+
+        // Present loading overlay
+        auditLoadingScreen.style.display = "flex";
+        auditLoadingScreen.classList.remove("loading-dismissed");
+
+        // Monitor background API promise
+        let backendResult = null;
+        let backendError = null;
+        fetchPromise.then(res => {
+            backendResult = res;
+        }).catch(err => {
+            backendError = err;
+        });
+
+        // Sequence through steps 0 to 3 sequentially
+        for (let i = 0; i <= 3; i++) {
+            if (checkCancel() || backendError) break;
+            const step = SIMPLIFIED_AUDIT_STEPS[i];
+
+            // 1. Activate current step
+            setStepState(i, "active");
+            await typeLoadingStatus(step.status, 15, checkCancel);
+            if (checkCancel() || backendError) break;
+
+            // Hold on active step for user visibility
+            await sleepWithCancel(step.holdMs, checkCancel);
+            if (checkCancel() || backendError) break;
+
+            // 2. Mark step done -> turns vibrant green!
+            setStepState(i, "done");
+
+            // Pause so the vibrant green state is clearly seen by the user
+            await sleepWithCancel(350, checkCancel);
+            if (checkCancel() || backendError) break;
+
+            // 3. Fade down the completed step as requested: "fades after becoming green"
+            setStepState(i, "faded");
+        }
+
+        // Now activate Step 4 (AI Remediation & Clean Refactoring)
+        if (!checkCancel() && !backendError) {
+            setStepState(4, "active");
+            await typeLoadingStatus(SIMPLIFIED_AUDIT_STEPS[4].status, 15, checkCancel);
+        }
+
+        // Wait for backend resolution if backend is still processing
+        while (!backendResult && !backendError && !checkCancel()) {
+            await new Promise(r => setTimeout(r, 60));
+        }
+
+        if (backendError) {
+            if (loadingActiveStatus) loadingActiveStatus.textContent = "Pipeline Error: " + backendError.message;
+            await sleepWithCancel(2000, checkCancel);
+            auditLoadingScreen.classList.add("loading-dismissed");
+            setTimeout(() => { auditLoadingScreen.style.display = "none"; }, 600);
+            throw backendError;
+        }
+
+        if (!backendResult || !backendResult.success) {
+            const errMsg = (backendResult && (backendResult.error || backendResult.detail)) || "Syntax parsing error";
+            if (loadingActiveStatus) loadingActiveStatus.textContent = "Analysis Error: " + errMsg;
+            await sleepWithCancel(2000, checkCancel);
+            auditLoadingScreen.classList.add("loading-dismissed");
+            setTimeout(() => { auditLoadingScreen.style.display = "none"; }, 600);
+            return backendResult;
+        }
+
+        // Step 4 completes successfully -> turns green!
+        setStepState(4, "done");
+        if (loadingActiveStatus) {
+            loadingActiveStatus.textContent = "Audit Complete: All Intra-Procedural Invariants Verified!";
+        }
+
+        // Trigger vortex success glow
+        if (modernVortexLoader) {
+            modernVortexLoader.classList.add("is-success");
+        }
+
+        // Hold briefly so user sees the fully verified green milestone state
+        await sleepWithCancel(500, checkCancel);
+
+        // Fade step 4 down as well
+        setStepState(4, "faded");
+        await sleepWithCancel(300, checkCancel);
+
+        return backendResult;
+    }
+
     // --- Execute Graph Audit ---
     if (analyzeBtn) {
         analyzeBtn.addEventListener("click", async () => {
@@ -585,58 +846,73 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
                 return;
             }
 
-            // Dynamically reveal the subroutines bar, audit panels, and refactored section
-            if (subroutinesBarWrapper) subroutinesBarWrapper.style.display = "block";
-            if (currentAuditSection) currentAuditSection.classList.add("is-audited");
-            adjustPreAuditEditorHeight();
-            if (auditOutputPanel) auditOutputPanel.style.display = "flex";
-            if (refactoredDivider) refactoredDivider.style.display = "flex";
-            if (refactoredAuditSection) {
-                refactoredAuditSection.classList.add("is-audited");
-                refactoredAuditSection.style.display = "grid";
-            }
-
-            // Switch to 2 divs mode: show New File ONLY on left code div
-            if (preAuditActions) preAuditActions.style.display = "none";
-            if (postAuditActions) postAuditActions.style.display = "flex";
-
-            if (welcomeEmptyState) welcomeEmptyState.style.display = "none";
-            if (auditResultsContainer) auditResultsContainer.style.display = "none";
-            if (loaderState) loaderState.style.display = "block";
-            if (loaderText) loaderText.textContent = "Extracting AST token streams & building semantic graphs...";
             if (codeEditor) codeEditor.classList.add("scanning");
 
             try {
-                const res = await fetch("/api/analyze", {
+                // Launch asynchronous audit fetch
+                const fetchPromise = fetch("/api/analyze", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         code: code,
                         explain: true, // Always synthesize XAI root-cause & refactored code
                     }),
+                }).then(async res => {
+                    const json = await res.json();
+                    if (!res.ok) throw new Error(json.error || json.detail || "Server error");
+                    return json;
                 });
 
-                const data = await res.json();
-                if (!res.ok || !data.success) {
-                    showToast("Audit Failed: " + (data.error || "Syntax parsing error"), "error");
-                    if (loaderState) loaderState.style.display = "none";
+                // Run animated cyber loading screen in sync with the audit pipeline
+                const data = await runAuditLoadingSequence(fetchPromise, code);
+                if (!data || !data.success) {
+                    showToast("Audit Failed: " + (data ? (data.error || "Syntax parsing error") : "Analysis aborted"), "error");
                     return;
                 }
 
                 currentAnalysisData = data;
                 activeFnIndex = 0;
 
-                if (loaderState) loaderState.style.display = "none";
-                if (auditResultsContainer) auditResultsContainer.style.display = "block";
+                // 1. Fully populate and render all analytical details FIRST
                 if (fnCountPill) fnCountPill.textContent = `${data.function_count} Subroutine(s) Analyzed`;
-
                 renderSubroutineTabs();
                 renderSubroutineResults();
                 updateEditorGutter();
+
+                // 2. ONLY NOW reveal the detail page sections & 2-column layout!
+                if (subroutinesBarWrapper) subroutinesBarWrapper.style.display = "block";
+                if (currentAuditSection) currentAuditSection.classList.add("is-audited");
+                adjustPreAuditEditorHeight();
+                if (auditOutputPanel) auditOutputPanel.style.display = "flex";
+                if (refactoredDivider) refactoredDivider.style.display = "flex";
+                if (refactoredAuditSection) {
+                    refactoredAuditSection.classList.add("is-audited");
+                    refactoredAuditSection.style.display = "grid";
+                }
+
+                // Switch to 2 divs mode: show New File ONLY on left code div
+                if (preAuditActions) preAuditActions.style.display = "none";
+                if (postAuditActions) postAuditActions.style.display = "flex";
+
+                if (welcomeEmptyState) welcomeEmptyState.style.display = "none";
+                if (auditResultsContainer) auditResultsContainer.style.display = "block";
+                if (loaderState) loaderState.style.display = "none";
+
+                // 3. Smoothly dismiss the loading screen overlay to reveal the detail page
+                if (auditLoadingScreen) {
+                    auditLoadingScreen.classList.add("loading-dismissed");
+                    setTimeout(() => {
+                        auditLoadingScreen.style.display = "none";
+                    }, 600);
+                }
+
                 showToast(`Analysis completed for ${data.function_count} subroutine(s)!`, "success");
             } catch (err) {
                 showToast("Network connection error: " + err.message, "error");
-                if (loaderState) loaderState.style.display = "none";
+                if (auditLoadingScreen) {
+                    auditLoadingScreen.classList.add("loading-dismissed");
+                    setTimeout(() => { auditLoadingScreen.style.display = "none"; }, 600);
+                }
             } finally {
                 if (codeEditor) codeEditor.classList.remove("scanning");
             }
@@ -972,6 +1248,67 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
                 : "<div class='xai-card-item'><div class='xai-item-body'><p>Optimal zero-cost invariants verified. No defects detected in this subroutine.</p></div></div>";
         }
 
+        // 7b. Render Dynamically Calculated Refactored RQI & 4 Metric Mini-Gauges (Section 2)
+        const refRqi = fn.refactored_rqi || {};
+        const refScore = refRqi.rqi_score !== undefined ? refRqi.rqi_score : 100;
+        
+        if (refactoredRqiScoreNum) refactoredRqiScoreNum.textContent = formatScore(refScore);
+        if (refactoredScoreCirclePath) refactoredScoreCirclePath.setAttribute("stroke-dasharray", `${refScore}, 100`);
+
+        let refDialColor = "var(--vec-maint)";
+        if (refScore < 60) refDialColor = "var(--sev-critical)";
+        else if (refScore < 75) refDialColor = "var(--brand-rust)";
+        else if (refScore < 90) refDialColor = "var(--vec-perf)";
+        if (refactoredScoreCirclePath) refactoredScoreCirclePath.setAttribute("stroke", refDialColor);
+        if (refactoredRqiScoreNum) refactoredRqiScoreNum.style.color = refDialColor;
+
+        const rawRefGrade = refRqi.grade || "A+ (Idiomatic & Robust)";
+        const refGradeMatch = rawRefGrade.match(/^([A-Z]\+?)\s*\((.*)\)$/);
+        const refGradeLetter = refGradeMatch ? refGradeMatch[1] : (rawRefGrade[0] || "A+");
+        const refGradeText = refGradeMatch ? refGradeMatch[2] : rawRefGrade;
+        if (refactoredRqiGradeLetter) {
+            refactoredRqiGradeLetter.textContent = refGradeLetter;
+            refactoredRqiGradeLetter.style.color = refDialColor;
+            refactoredRqiGradeLetter.style.borderColor = refDialColor;
+        }
+        if (refactoredRqiGradeText) {
+            refactoredRqiGradeText.textContent = refGradeText;
+            refactoredRqiGradeText.style.color = refDialColor;
+        }
+
+        const refSafety = refRqi.safety_score !== undefined ? refRqi.safety_score : 100;
+        const refPerf = refRqi.performance_score !== undefined ? refRqi.performance_score : 100;
+        const refMaint = refRqi.maintainability_score !== undefined ? refRqi.maintainability_score : 100;
+        const refSec = refRqi.security_score !== undefined ? refRqi.security_score : 100;
+
+        if (refactoredValSafety) refactoredValSafety.textContent = formatScore(refSafety);
+        if (refactoredPathSafety) refactoredPathSafety.setAttribute("stroke-dasharray", `${refSafety}, 100`);
+        if (refactoredValPerf) refactoredValPerf.textContent = formatScore(refPerf);
+        if (refactoredPathPerf) refactoredPathPerf.setAttribute("stroke-dasharray", `${refPerf}, 100`);
+        if (refactoredValMaint) refactoredValMaint.textContent = formatScore(refMaint);
+        if (refactoredPathMaint) refactoredPathMaint.setAttribute("stroke-dasharray", `${refMaint}, 100`);
+        if (refactoredValSec) refactoredValSec.textContent = formatScore(refSec);
+        if (refactoredPathSec) refactoredPathSec.setAttribute("stroke-dasharray", `${refSec}, 100`);
+
+        // Refactored Topology Status Bar
+        const refCpgSum = fn.refactored_cpg_summary || {};
+        const refUnsafe = refCpgSum.unsafe_blocks !== undefined ? refCpgSum.unsafe_blocks : 0;
+        const refClones = refCpgSum.clones !== undefined ? refCpgSum.clones : 0;
+        if (refactoredStatUnsafe) {
+            refactoredStatUnsafe.textContent = refUnsafe;
+            refactoredStatUnsafe.style.color = refUnsafe === 0 ? "var(--vec-maint)" : "var(--sev-critical)";
+        }
+        if (refactoredStatClones) {
+            refactoredStatClones.textContent = refClones;
+            refactoredStatClones.style.color = refClones === 0 ? "var(--vec-maint)" : "var(--brand-rust)";
+        }
+        if (refactoredStatHealth) {
+            refactoredStatHealth.textContent = (refUnsafe === 0 && refClones === 0) ? "Optimal Invariants" : "Improved";
+        }
+        if (refactoredAccGraphBadge) {
+            refactoredAccGraphBadge.textContent = refUnsafe === 0 ? "Zero Unsafe" : `${refUnsafe} Unsafe`;
+        }
+
         // 8. Revisions Badge
         const totalRevs = fn.total_revisions !== undefined ? fn.total_revisions : (fn.revisions ? fn.revisions.length : 0);
         if (revCountBadge) revCountBadge.textContent = totalRevs;
@@ -1184,13 +1521,21 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
     }
 
     function renderSingleGraph(container, fn, graphType, mode) {
-        let rawNodes = (fn.nodes && fn.nodes[graphType]) || [];
-        let rawEdges = (fn.edges && fn.edges[graphType]) || [];
+        let rawNodes = [];
+        let rawEdges = [];
 
-        // If rendering refactored view in dual mode, simulate the clean optimized graph
-        if (mode === "refactored") {
-            rawNodes = rawNodes.filter(n => !n.is_unsafe && n.node_type !== "UnsafeOperation" && !n.is_clone && n.node_type !== "ClonedBinding");
-            rawEdges = rawEdges.filter(e => !(e.edge_type && (e.edge_type.includes("UNSAFE") || e.edge_type.includes("CLONED"))));
+        if (mode === "refactored" && fn.refactored_nodes && fn.refactored_nodes[graphType]) {
+            rawNodes = fn.refactored_nodes[graphType] || [];
+            rawEdges = (fn.refactored_edges && fn.refactored_edges[graphType]) || [];
+        } else {
+            rawNodes = (fn.nodes && fn.nodes[graphType]) || [];
+            rawEdges = (fn.edges && fn.edges[graphType]) || [];
+
+            // If rendering refactored view in dual mode without pre-synthesized nodes, filter out defects
+            if (mode === "refactored") {
+                rawNodes = rawNodes.filter(n => !n.is_unsafe && n.node_type !== "UnsafeOperation" && !n.is_clone && n.node_type !== "ClonedBinding");
+                rawEdges = rawEdges.filter(e => !(e.edge_type && (e.edge_type.includes("UNSAFE") || e.edge_type.includes("CLONED"))));
+            }
         }
 
         const nodes = rawNodes.map(n => {

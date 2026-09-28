@@ -83,9 +83,6 @@ class RustParser:
                 if res.returncode == 0 and res.stdout.strip():
                     data = json.loads(res.stdout)
                     if not data.get("success", True):
-                        fallback = self._python_fallback_parse(code, file_path=file_path)
-                        if fallback.success and fallback.functions:
-                            return fallback
                         return AnalysisResult(
                             success=False,
                             error=data.get("error") or "Rust syntax error",
