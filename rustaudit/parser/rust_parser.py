@@ -2,6 +2,7 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 from pathlib import Path
 from dataclasses import dataclass, field, asdict
 from typing import Any, Dict, List, Optional
@@ -69,7 +70,79 @@ class RustParser:
         code = path.read_text(encoding="utf-8")
         return self.parse_code(code, file_path=str(path))
 
+    def _check_syntax(self, code: str) -> Optional[str]:
+        """
+        Validates Rust syntax before compiling graphs.
+        Checks delimiter balance and runs rustc compiler parse checks if available.
+        """
+        # 1. Delimiter balance check
+        stack = []
+        delims = {')': '(', '}': '{', ']': '['}
+        in_string = False
+        for line_idx, line in enumerate(code.splitlines(), 1):
+            clean = re.sub(r'//.*$', '', line)
+            for ch in clean:
+                if ch == '"':
+                    in_string = not in_string
+                    continue
+                if in_string:
+                    continue
+                if ch in '({[':
+                    stack.append((ch, line_idx))
+                elif ch in delims:
+                    if not stack or stack[-1][0] != delims[ch]:
+                        return f"Rust syntax error: unmatched closing delimiter '{ch}' on line {line_idx}"
+                    stack.pop()
+        if stack:
+            open_ch, line_idx = stack[-1]
+            return f"Rust syntax error: unclosed delimiter '{open_ch}' opened on line {line_idx}"
+
+        # 2. Syntax parse validation via rustc compiler
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                res = subprocess.run(
+                    ['rustc', '--crate-type=lib', '--emit=metadata', '--out-dir', tmpdir, '-'],
+                    input=code,
+                    text=True,
+                    capture_output=True,
+                    timeout=5,
+                )
+                if res.returncode != 0:
+                    lines = res.stderr.splitlines()
+                for i, line in enumerate(lines):
+                    # Check for syntax parse errors (missing semicolons, unexpected tokens, etc.)
+                    if line.startswith('error: expected') or line.startswith('error: unexpected') or 'expected `;`' in line:
+                        loc = ""
+                        if i + 1 < len(lines) and '-->' in lines[i + 1]:
+                            m = re.search(r':(\d+):(\d+)', lines[i + 1])
+                            if m:
+                                loc = f" on line {m.group(1)}"
+                        clean_err = line.replace('error: ', '')
+                        return f"Rust syntax parse error: {clean_err}{loc}"
+                    elif line.startswith('error:') and not line.startswith('error: aborting') and 'cannot find' not in line:
+                        loc = ""
+                        if i + 1 < len(lines) and '-->' in lines[i + 1]:
+                            m = re.search(r':(\d+):(\d+)', lines[i + 1])
+                            if m:
+                                loc = f" on line {m.group(1)}"
+                        clean_err = line.replace('error: ', '')
+                        return f"Rust syntax parse error: {clean_err}{loc}"
+        except Exception:
+            pass
+
+        return None
+
     def parse_code(self, code: str, file_path: Optional[str] = None) -> AnalysisResult:
+        # Pre-validate syntax
+        syntax_err = self._check_syntax(code)
+        if syntax_err:
+            return AnalysisResult(
+                success=False,
+                error=syntax_err,
+                file_path=file_path,
+                functions=[],
+            )
+
         # Try native cargo_parser binary if executable exists
         if self.binary_path.exists():
             try:
@@ -252,7 +325,7 @@ class RustParser:
                 if target_tokens:
                     primary_token = target_tokens[0]
                     for offset in range(curr_search_idx, len(fn_lines)):
-                        if primary_token in fn_lines[offset]:
+                        if re.search(r'\b' + re.escape(primary_token) + r'\b', fn_lines[offset]):
                             matched_offset = offset
                             break
 

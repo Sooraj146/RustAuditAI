@@ -20,8 +20,8 @@ class LLMClient:
     Modular client interface for Google Gemini API and Groq API.
     """
 
-    GEMINI_MODELS = ["gemini-3.7-flash", "gemini-3.5-flash", "gemma-4-26b-a4b-it"]
-    GROQ_MODELS = ["openai/gpt-oss-120b", "groq/compound", "qwen/qwen3.6-27b", "openai/gpt-oss-20b"]
+    GEMINI_MODELS = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-3.7-flash", "gemini-pro-latest"]
+    GROQ_MODELS = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]
 
     def __init__(
         self,
@@ -38,7 +38,12 @@ class LLMClient:
         Generates text completion using the selected LLM provider.
         """
         if self.provider == "gemini" or (self.gemini_key and not self.groq_key):
-            return self._call_gemini(prompt, system_prompt)
+            try:
+                return self._call_gemini(prompt, system_prompt)
+            except Exception as e:
+                if self.groq_key:
+                    return self._call_groq(prompt, system_prompt)
+                raise e
         elif self.provider == "groq" or self.groq_key:
             return self._call_groq(prompt, system_prompt)
         else:
@@ -61,7 +66,7 @@ class LLMClient:
             "contents": contents,
             "generationConfig": {
                 "temperature": 0.2,
-                "maxOutputTokens": 2500,
+                "maxOutputTokens": 4096,
             },
         }
 
@@ -73,7 +78,7 @@ class LLMClient:
         for model in models_to_try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.gemini_key}"
             try:
-                with httpx.Client(timeout=30.0) as client:
+                with httpx.Client(timeout=15.0) as client:
                     res = client.post(url, json=payload)
                     if res.status_code == 200:
                         data = res.json()
@@ -81,7 +86,9 @@ class LLMClient:
                         if candidates:
                             parts = candidates[0].get("content", {}).get("parts", [])
                             if parts:
-                                return parts[0].get("text", "").strip()
+                                text = parts[0].get("text", "").strip()
+                                if len(text) > 100:
+                                    return text
                     else:
                         last_err = f"Gemini API ({model}) returned {res.status_code}: {res.text[:200]}"
             except Exception as e:
@@ -117,16 +124,18 @@ class LLMClient:
                 "model": model,
                 "messages": messages,
                 "temperature": 0.2,
-                "max_tokens": 2500,
+                "max_tokens": 4096,
             }
             try:
-                with httpx.Client(timeout=30.0) as client:
+                with httpx.Client(timeout=25.0) as client:
                     res = client.post(url, headers=headers, json=payload)
                     if res.status_code == 200:
                         data = res.json()
                         choices = data.get("choices", [])
                         if choices:
-                            return choices[0].get("message", {}).get("content", "").strip()
+                            text = choices[0].get("message", {}).get("content", "").strip()
+                            if len(text) > 50:
+                                return text
                     else:
                         last_err = f"Groq API ({model}) returned {res.status_code}: {res.text[:200]}"
             except Exception as e:

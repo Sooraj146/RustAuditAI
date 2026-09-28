@@ -244,6 +244,30 @@
                         </div>
                     </div>
 
+                    <!-- Animated Syntax Error Notification Div -->
+                    <div id="syntax-error-banner" class="syntax-error-card" style="display: none;" role="alert">
+                        <div class="syntax-error-header">
+                            <div class="syntax-error-title-group">
+                                <span class="syntax-error-pulse-icon"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                                <div class="syntax-error-headings">
+                                    <h4 class="syntax-error-title">Rust Syntax Parse Error</h4>
+                                    <span class="syntax-error-subtitle">Intra-procedural AST parsing failed &bull; Invariant compilation halted</span>
+                                </div>
+                            </div>
+                            <button type="button" id="close-syntax-error-btn" class="syntax-error-close-btn" title="Dismiss error">&times;</button>
+                        </div>
+                        <div class="syntax-error-body">
+                            <div class="syntax-error-detail-box">
+                                <i class="fa-solid fa-terminal syntax-terminal-icon"></i>
+                                <span id="syntax-error-message-text" class="syntax-error-code-text">error: expected `;`, found keyword `let`</span>
+                            </div>
+                            <div class="syntax-error-help">
+                                <i class="fa-solid fa-circle-info"></i>
+                                <span id="syntax-error-hint">Please check for missing semicolons (<code>;</code>), unmatched delimiters (<code>{}</code>), or invalid Rust syntax.</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="editor-container-wrapper" id="editor-wrapper">
                         <div id="drop-overlay" class="drop-overlay hidden">
                             <div class="drop-overlay-box">
@@ -406,7 +430,7 @@
                                     <div class="acc-header-left">
                                         <i class="fa-solid fa-shield-halved acc-accent-icon" style="color: var(--brand-rust);"></i>
                                         <span class="acc-title-text">MITRE CWE Tracking & Deductions</span>
-                                        <span class="acc-badge">Vulnerabilities</span>
+                                        <span class="acc-badge" id="cwe-accordion-badge">Vulnerabilities</span>
                                     </div>
                                     <i class="fa-solid fa-chevron-down acc-arrow"></i>
                                 </button>

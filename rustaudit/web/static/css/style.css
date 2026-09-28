@@ -1281,7 +1281,7 @@ input:checked + .slider::before {
     list-style: none;
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.5rem;
 }
 
 .deduction-card {
@@ -1289,10 +1289,10 @@ input:checked + .slider::before {
     border: 1px solid var(--border-subtle);
     border-left: 4px solid var(--brand-rust);
     border-radius: var(--radius-sm);
-    padding: 0.75rem 1rem;
+    padding: 0.65rem 0.9rem;
     display: flex;
     flex-direction: column;
-    gap: 0.4rem;
+    gap: 0.35rem;
     transition: var(--transition-fast);
 }
 
@@ -1647,6 +1647,8 @@ input:checked + .slider::before {
     height: 480px;
     background: oklch(11% 0.02 260);
     position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
 }
 
 .dual-canvas-grid {
@@ -2429,17 +2431,16 @@ input:checked + .slider::before {
     align-items: stretch;
 }
 
-/* Post-Analysis: Constant Height for Both Left & Right Panels (1 * Whole Screen = 100vh) */
+/* Post-Analysis: Dynamic Viewport Height for Both Left & Right Panels */
 .audit-split-section.is-audited .code-input-panel,
 .audit-split-section.is-audited .audit-output-panel,
 .refactored-code-panel,
 .refactored-eval-panel {
-    height: 100vh;
     min-height: 100vh;
-    max-height: 100vh;
+    height: auto;
+    max-height: none;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
 }
 
 /* Expand code editor and refactored code viewer to fill 100vh when audited */
@@ -2840,7 +2841,7 @@ input:checked + .slider::before {
     border-top: 1px solid var(--border-subtle);
     background: oklch(14% 0.025 260 / 50%);
     padding: 0.85rem 1rem;
-    max-height: calc(100vh - 200px);
+    max-height: none;
     overflow-y: auto;
     overflow-x: hidden;
     animation: fadeIn 0.25s ease-out;
@@ -3439,3 +3440,175 @@ input:checked + .slider::before {
 .audit-step-item.is-faded .step-sub {
     color: var(--text-dim);
 }
+
+/* ==========================================================================
+   Syntax Error Notification Div & Cyber Animations
+   ========================================================================== */
+.syntax-error-card {
+    background: linear-gradient(135deg, oklch(22% 0.07 25 / 96%), oklch(16% 0.04 25 / 92%));
+    border: 1px solid oklch(62% 0.22 25 / 75%);
+    border-left: 5px solid var(--sev-critical);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.15rem;
+    box-shadow: 0 4px 20px oklch(60% 0.25 25 / 20%), 0 0 24px oklch(60% 0.25 25 / 15%);
+    animation: syntaxAlertSlideDown 0.38s cubic-bezier(0.16, 1, 0.3, 1), alertPulseGlow 3s ease-in-out infinite;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    position: relative;
+    z-index: 20;
+}
+
+@keyframes syntaxAlertSlideDown {
+    0% {
+        opacity: 0;
+        transform: translateY(-16px) scale(0.98);
+    }
+    60% {
+        transform: translateY(2px) scale(1.005);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes alertPulseGlow {
+    0%, 100% {
+        box-shadow: 0 4px 20px oklch(60% 0.25 25 / 20%), 0 0 20px oklch(60% 0.25 25 / 15%);
+        border-color: oklch(62% 0.22 25 / 70%);
+    }
+    50% {
+        box-shadow: 0 4px 28px oklch(60% 0.25 25 / 35%), 0 0 32px oklch(60% 0.25 25 / 30%);
+        border-color: oklch(70% 0.25 25 / 95%);
+    }
+}
+
+.syntax-error-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.syntax-error-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.syntax-error-pulse-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: oklch(45% 0.20 25 / 30%);
+    border: 1px solid var(--sev-critical);
+    color: var(--sev-critical);
+    font-size: 1.1rem;
+    animation: alertIconShake 2.5s ease-in-out infinite;
+}
+
+@keyframes alertIconShake {
+    0%, 80%, 100% { transform: scale(1); }
+    85% { transform: scale(1.1) rotate(-4deg); }
+    90% { transform: scale(1.1) rotate(4deg); }
+    95% { transform: scale(1.05) rotate(-2deg); }
+}
+
+.syntax-error-headings {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.syntax-error-title {
+    font-family: var(--font-display);
+    font-size: 0.98rem;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: -0.01em;
+}
+
+.syntax-error-subtitle {
+    font-size: 0.74rem;
+    color: oklch(80% 0.08 25);
+    font-family: var(--font-mono);
+}
+
+.syntax-error-close-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.45rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.2rem 0.45rem;
+    border-radius: var(--radius-sm);
+    transition: var(--transition-fast);
+}
+
+.syntax-error-close-btn:hover {
+    color: #ffffff;
+    background: oklch(30% 0.06 25 / 50%);
+}
+
+.syntax-error-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.syntax-error-detail-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    background: oklch(11% 0.02 260 / 92%);
+    border: 1px solid oklch(35% 0.08 25 / 55%);
+    border-radius: var(--radius-sm);
+    padding: 0.65rem 0.85rem;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: oklch(92% 0.08 25);
+    line-height: 1.4;
+    overflow-x: auto;
+}
+
+.syntax-terminal-icon {
+    color: var(--brand-rust);
+    font-size: 0.85rem;
+    margin-top: 0.15rem;
+    flex-shrink: 0;
+}
+
+.syntax-error-code-text {
+    flex: 1;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.syntax-error-help {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.syntax-error-help i {
+    color: var(--brand-cyan);
+    font-size: 0.85rem;
+}
+
+.syntax-error-help code {
+    background: oklch(20% 0.03 260);
+    border: 1px solid var(--border-subtle);
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    color: var(--brand-rust);
+}
+

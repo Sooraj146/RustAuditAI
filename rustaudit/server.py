@@ -130,7 +130,11 @@ async def analyze_code(req: AnalyzeRequest):
     if not parse_res.success:
         return JSONResponse(
             status_code=400,
-            content={"success": False, "error": parse_res.error or "Syntax parse error"},
+            content={
+                "success": False,
+                "error_type": "SYNTAX_ERROR",
+                "error": parse_res.error or "Rust syntax parsing error: invalid subroutine grammar or structure",
+            },
         )
 
     functions_data = []
@@ -226,7 +230,22 @@ async def analyze_code(req: AnalyzeRequest):
 
         if refactored_code:
             try:
+                # Sanitize any accidental duplicated keywords
+                refactored_code = re.sub(r'\b(pub\s+)+pub\b', 'pub', refactored_code)
+                refactored_code = re.sub(r'\b(pub\s+)+unsafe\s+fn\b', 'pub fn', refactored_code)
+                refactored_code = re.sub(r'\b(pub\s+)+fn\b', 'pub fn', refactored_code)
+
                 ref_parse = parser.parse_code(refactored_code)
+                # If refactored code has syntax errors, fall back to verified clean fallback code
+                if not ref_parse.success:
+                    lines = req.code.splitlines()
+                    fn_code = "\n".join(lines[fn.line_start - 1 : fn.line_end]) if (fn.line_start > 0 and fn.line_end <= len(lines)) else req.code
+                    refactored_code = ai_engine._generate_fallback_code(fn, fn_code)
+                    ref_parse = parser.parse_code(refactored_code)
+
+                if "xai_report" in fn_data and isinstance(fn_data["xai_report"], dict):
+                    fn_data["xai_report"]["refactored_code"] = refactored_code
+
                 if ref_parse.success and ref_parse.functions:
                     ref_fn = next((f for f in ref_parse.functions if f.name == fn.name), ref_parse.functions[0])
                     ref_cpg = builder.build_cpg(ref_fn)

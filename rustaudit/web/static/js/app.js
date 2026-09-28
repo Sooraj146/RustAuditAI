@@ -116,6 +116,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const xaiTestBtn = document.getElementById("xai-test-btn");
     const closeResultsBtn = document.getElementById("close-results-btn");
 
+    // Syntax Error Banner Elements
+    const syntaxErrorBanner = document.getElementById("syntax-error-banner");
+    const syntaxErrorMessageText = document.getElementById("syntax-error-message-text");
+    const syntaxErrorHint = document.getElementById("syntax-error-hint");
+    const closeSyntaxErrorBtn = document.getElementById("close-syntax-error-btn");
+
+    // CWE Badge
+    const cweAccordionBadge = document.getElementById("cwe-accordion-badge");
+
     // Top Subroutines Function Bar
     const subroutinesBarWrapper = document.getElementById("subroutines-bar-wrapper");
     const fnCountPill = document.getElementById("fn-count-pill");
@@ -452,6 +461,46 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
         }, 3200);
     }
 
+    // --- Syntax Error Banner Controller ---
+    function showSyntaxErrorDiv(errorMsg) {
+        if (!syntaxErrorBanner || !syntaxErrorMessageText) return;
+
+        syntaxErrorMessageText.textContent = errorMsg || "Rust syntax parse error: invalid subroutine syntax or delimiters.";
+
+        if (syntaxErrorHint) {
+            if (/semi|;/i.test(errorMsg)) {
+                syntaxErrorHint.innerHTML = 'A statement is missing a trailing semicolon (<code>;</code>). In Rust, <code>let</code> statements and non-terminal expressions must terminate with <code>;</code>.';
+            } else if (/delimiter|bracket|brace|unclosed|unmatched/i.test(errorMsg)) {
+                syntaxErrorHint.innerHTML = 'Mismatched or unclosed delimiters detected. Check that all braces <code>{}</code> and parentheses <code>()</code> are properly closed.';
+            } else {
+                syntaxErrorHint.innerHTML = 'Please check for missing semicolons (<code>;</code>), unmatched delimiters (<code>{}</code>), or invalid Rust syntax.';
+            }
+        }
+
+        syntaxErrorBanner.style.display = "flex";
+        syntaxErrorBanner.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+        // Highlight line in gutter if line number found
+        const lineMatch = (errorMsg || "").match(/line\s+(\d+)/i) || (errorMsg || "").match(/:(\d+):/);
+        if (lineMatch && editorGutter) {
+            const errLine = parseInt(lineMatch[1], 10);
+            const gutterLines = editorGutter.querySelectorAll(".gutter-line");
+            if (gutterLines[errLine - 1]) {
+                gutterLines[errLine - 1].classList.add("has-critical");
+            }
+        }
+    }
+
+    function hideSyntaxErrorDiv() {
+        if (syntaxErrorBanner) {
+            syntaxErrorBanner.style.display = "none";
+        }
+    }
+
+    if (closeSyntaxErrorBtn) {
+        closeSyntaxErrorBtn.addEventListener("click", hideSyntaxErrorDiv);
+    }
+
     // --- Pre-Analysis Workstation Dynamic Height (Adjusts to Lines of Code) ---
     function adjustPreAuditEditorHeight() {
         if (!codeEditor || !editorWrapper) return;
@@ -607,6 +656,7 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
 
     if (codeEditor) {
         codeEditor.addEventListener("input", updateEditorGutter);
+        codeEditor.addEventListener("input", hideSyntaxErrorDiv);
         codeEditor.addEventListener("scroll", () => {
             if (editorGutter) editorGutter.scrollTop = codeEditor.scrollTop;
             if (editorHighlightUnderlay) {
@@ -800,19 +850,22 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
         }
 
         if (backendError) {
-            if (loadingActiveStatus) loadingActiveStatus.textContent = "Pipeline Error: " + backendError.message;
-            await sleepWithCancel(2000, checkCancel);
+            const isSyntax = backendError.isSyntaxError || /syntax|parse|expected|missing|delimiter/i.test(backendError.message || "");
+            if (loadingActiveStatus) {
+                loadingActiveStatus.textContent = isSyntax ? ("Syntax Error: " + backendError.message) : ("Pipeline Error: " + backendError.message);
+            }
+            await sleepWithCancel(isSyntax ? 400 : 1500, checkCancel);
             auditLoadingScreen.classList.add("loading-dismissed");
-            setTimeout(() => { auditLoadingScreen.style.display = "none"; }, 600);
+            setTimeout(() => { auditLoadingScreen.style.display = "none"; }, 300);
             throw backendError;
         }
 
         if (!backendResult || !backendResult.success) {
             const errMsg = (backendResult && (backendResult.error || backendResult.detail)) || "Syntax parsing error";
-            if (loadingActiveStatus) loadingActiveStatus.textContent = "Analysis Error: " + errMsg;
-            await sleepWithCancel(2000, checkCancel);
+            if (loadingActiveStatus) loadingActiveStatus.textContent = "Syntax Error: " + errMsg;
+            await sleepWithCancel(500, checkCancel);
             auditLoadingScreen.classList.add("loading-dismissed");
-            setTimeout(() => { auditLoadingScreen.style.display = "none"; }, 600);
+            setTimeout(() => { auditLoadingScreen.style.display = "none"; }, 300);
             return backendResult;
         }
 
@@ -849,6 +902,8 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
             if (codeEditor) codeEditor.classList.add("scanning");
 
             try {
+                hideSyntaxErrorDiv();
+
                 // Launch asynchronous audit fetch
                 const fetchPromise = fetch("/api/analyze", {
                     method: "POST",
@@ -859,27 +914,28 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
                     }),
                 }).then(async res => {
                     const json = await res.json();
-                    if (!res.ok) throw new Error(json.error || json.detail || "Server error");
+                    if (!res.ok) {
+                        const err = new Error(json.error || json.detail || "Server error");
+                        err.isSyntaxError = (res.status === 400 && (json.error_type === "SYNTAX_ERROR" || /syntax|parse|expected|missing|delimiter/i.test(json.error || "")));
+                        err.errorData = json;
+                        throw err;
+                    }
                     return json;
                 });
 
                 // Run animated cyber loading screen in sync with the audit pipeline
                 const data = await runAuditLoadingSequence(fetchPromise, code);
                 if (!data || !data.success) {
-                    showToast("Audit Failed: " + (data ? (data.error || "Syntax parsing error") : "Analysis aborted"), "error");
+                    const msg = (data && (data.error || data.detail)) || "Rust syntax parse error detected";
+                    showSyntaxErrorDiv(msg);
+                    showToast("Rust Syntax Parse Error: Please review subroutine syntax.", "error");
                     return;
                 }
 
                 currentAnalysisData = data;
                 activeFnIndex = 0;
 
-                // 1. Fully populate and render all analytical details FIRST
-                if (fnCountPill) fnCountPill.textContent = `${data.function_count} Subroutine(s) Analyzed`;
-                renderSubroutineTabs();
-                renderSubroutineResults();
-                updateEditorGutter();
-
-                // 2. ONLY NOW reveal the detail page sections & 2-column layout!
+                // 1. Reveal detail page sections & 2-column layout FIRST so graph containers have valid dimensions
                 if (subroutinesBarWrapper) subroutinesBarWrapper.style.display = "block";
                 if (currentAuditSection) currentAuditSection.classList.add("is-audited");
                 adjustPreAuditEditorHeight();
@@ -898,20 +954,41 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
                 if (auditResultsContainer) auditResultsContainer.style.display = "block";
                 if (loaderState) loaderState.style.display = "none";
 
+                // 2. Fully populate and render all analytical details & graphs!
+                if (fnCountPill) fnCountPill.textContent = `${data.function_count} Subroutine(s) Analyzed`;
+                renderSubroutineTabs();
+                renderSubroutineResults();
+                updateEditorGutter();
+
                 // 3. Smoothly dismiss the loading screen overlay to reveal the detail page
                 if (auditLoadingScreen) {
                     auditLoadingScreen.classList.add("loading-dismissed");
                     setTimeout(() => {
                         auditLoadingScreen.style.display = "none";
-                    }, 600);
+                        // Re-fit both graphs once loading overlay is completely removed
+                        if (singleNetwork) {
+                            singleNetwork.redraw();
+                            singleNetwork.fit({ padding: 30, animation: false });
+                        }
+                        if (refactoredNetwork) {
+                            refactoredNetwork.redraw();
+                            refactoredNetwork.fit({ padding: 30, animation: false });
+                        }
+                    }, 650);
                 }
 
                 showToast(`Analysis completed for ${data.function_count} subroutine(s)!`, "success");
             } catch (err) {
-                showToast("Network connection error: " + err.message, "error");
+                const isSyntax = err.isSyntaxError || /syntax|parse|missing|expected|delimiter/i.test(err.message || "");
+                if (isSyntax) {
+                    showSyntaxErrorDiv(err.message);
+                    showToast("Rust Syntax Parse Error: Please review subroutine syntax.", "error");
+                } else {
+                    showToast("Network connection error: " + err.message, "error");
+                }
                 if (auditLoadingScreen) {
                     auditLoadingScreen.classList.add("loading-dismissed");
-                    setTimeout(() => { auditLoadingScreen.style.display = "none"; }, 600);
+                    setTimeout(() => { auditLoadingScreen.style.display = "none"; }, 350);
                 }
             } finally {
                 if (codeEditor) codeEditor.classList.remove("scanning");
@@ -1189,6 +1266,11 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
         if (cweCountHigh) cweCountHigh.textContent = `${cweSummary.high || 0} High`;
         if (cweCountMedium) cweCountMedium.textContent = `${cweSummary.medium || 0} Medium`;
         if (cweCountLow) cweCountLow.textContent = `${cweSummary.low || 0} Low`;
+
+        if (cweAccordionBadge) {
+            const totalIssues = (rqi.structured_deductions_list || []).length || (cweSummary.total || 0);
+            cweAccordionBadge.textContent = totalIssues > 0 ? `${totalIssues} Issues` : "Zero Deductions";
+        }
 
         // 4. Structured Deductions (Remove fixes from original evaluation)
         if (deductionsList) {
@@ -1591,30 +1673,73 @@ fn calculate_metrics(values: Vec<i32>) -> i32 {
 
         const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
         const options = {
+            autoResize: true,
             physics: {
                 solver: "forceAtlas2Based",
-                stabilization: { iterations: 90 },
+                stabilization: {
+                    enabled: true,
+                    iterations: 120,
+                    updateInterval: 25,
+                    fit: true,
+                },
                 forceAtlas2Based: {
-                    gravitationalConstant: -40,
-                    centralGravity: 0.01,
-                    springLength: 100,
-                    springConstant: 0.08,
+                    gravitationalConstant: -28,
+                    centralGravity: 0.02,
+                    springLength: 70,
+                    springConstant: 0.06,
+                    damping: 0.4
                 }
             },
             interaction: { hover: true, zoomView: true, dragView: true }
         };
 
+        let net = null;
         if (mode === "original") {
             if (originalNetwork) originalNetwork.destroy();
             originalNetwork = new vis.Network(container, data, options);
+            net = originalNetwork;
         } else if (mode === "refactored") {
             if (refactoredNetwork) refactoredNetwork.destroy();
             refactoredNetwork = new vis.Network(container, data, options);
+            net = refactoredNetwork;
         } else {
             if (singleNetwork) singleNetwork.destroy();
             singleNetwork = new vis.Network(container, data, options);
+            net = singleNetwork;
+        }
+
+        const fitNetwork = () => {
+            if (net && container.offsetWidth > 0 && container.offsetHeight > 0) {
+                net.fit({ padding: 30 });
+            }
+        };
+
+        net.once("stabilizationIterationsDone", () => {
+            fitNetwork();
+        });
+        net.once("stabilized", () => {
+            fitNetwork();
+        });
+
+        // Ensure fit triggers after layout paint
+        requestAnimationFrame(() => {
+            setTimeout(fitNetwork, 60);
+        });
+
+        if (window.ResizeObserver && !container._roAttached) {
+            container._roAttached = true;
+            const ro = new ResizeObserver(() => {
+                if (container.offsetWidth > 0 && container.offsetHeight > 0) {
+                    if (mode === "original" && originalNetwork) originalNetwork.fit({ padding: 30 });
+                    else if (mode === "refactored" && refactoredNetwork) refactoredNetwork.fit({ padding: 30 });
+                    else if (singleNetwork) singleNetwork.fit({ padding: 30 });
+                }
+            });
+            ro.observe(container);
         }
     }
+
+
 
     // --- Topological Outliers Drawer ---
     function renderTopologicalOutliers(fn) {
