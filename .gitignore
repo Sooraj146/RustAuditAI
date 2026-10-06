@@ -18,3 +18,8 @@ Cargo.lock
 #self files
 RustAuditAI.pdf
 srs_content.txt
+
+# Local databases and runtime data
+data/
+*.db
+*.sqlite3
